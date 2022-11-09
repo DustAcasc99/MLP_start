@@ -1,0 +1,59 @@
+***************************
+Form adel neurone;
+
+Neuron(inputs, activation, weights, eta)
+
+[Stabilire come inizializzare bias nel neurone]
+
+[Definire nel neurone una funzione per la feedforward propagation caratterizzata da:
+	self.net = netk;
+	che restituisca in output f(net) dove f è l'activation per il neruone e f(net) è un float]
+
+
+[Nel neurone, definire una funzione per la backpropagation, distinguendo tra tipologia di neurone,
+se hidden o di output; in particolare:
+
+
+	includere gli output del layer precedente composto dai neuroni prima definiti
+
+	nella funzione della backprop, avrebbe senso specificare un parametro che stabilisce se 		mantenere l'eta del neurone costante o no
+
+	se il neurone è un output unit, considera (dk-ok) per il neurone
+
+	salvare i DELTA-W dell'epoca precedente nel processo di backprop
+
+	considerare una variabile che aggiorni la media dei DELTA-W precedenti passati in input 		alla funzione di backpropagation, per le hidden unit
+
+	per la backpropagation dei neuroni in un hidden layer, va considerato come
+	acquisire i pesi del layer successivo (utilizzare un array 2-D con num righe = neuroni e
+	num di colonne = numero di pesi per neurone)
+
+	ritornare un float per i singoli neuroni)
+
+
+[Costruzione di una classe per HIDDEN LAYER con 
+	numero di neuroni in input, fan in, activation function)
+
+	self.matrice = matricia vuota per rappresentare i llayer con n righe = num neuroni e n 	colonne = num pesi
+
+	definire una forward propagation per il layer che aggiorna la matrice di pesi per il layer 	(per ogni cambiamento di peso aggiornare la matrice)
+
+
+	definire una funzione backprop per il layer che ritorni la matrice; 
+
+	per il feedforward del layer definire come return un array degli outpu dei singoli neuroni]
+
+
+[Domanda per l'implementazione del mini-batch  - è preferibile fare shuffle dei dati prima sul data-set intero o farlo per ogni sottoinsieme considerato nel processo di mini-batch?]
+
+
+[Controllare LOSS FUNCTIONS differenti, in particolare se la cross entropy può essere utilizzata come una funzione per task di regressione]
+
+
+
+
+
+
+
+
+
