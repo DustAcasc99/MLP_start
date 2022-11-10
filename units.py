@@ -6,7 +6,8 @@ import numpy as np
 
 class OutputUnit:
     """Class for a general output unit."""
-    def __init__(self, inputs, activation, weights, eta):
+    def __init__(self, inputs: np.ndarray, activation: np.ndarray,
+                weights: np.ndarray, eta: float):
         """Output unit initialization:
 
         Attributes
@@ -26,11 +27,14 @@ class OutputUnit:
         eta : float
             Learning rate for the alghoritm speed control.
         """
-        # Should we define the weights directly inside the network? (Andrea)
+        # Should we define the weights directly inside the unit? (Andrea)
         # Should we pass the input only when forwardprop. is called? (Andrea)
         self.inputs = inputs
         self.activation = activation
-        self.weights = weights # Maybe random generation also here?
+        self.weights = weights # Maybe random generation also here like bias? (Andrea)
         self.eta = eta
 
         self.bias = np.random.uniform(-0.2, 0.2)
+
+        self.net = None
+        self.output = None
