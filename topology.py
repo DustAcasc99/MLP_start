@@ -4,19 +4,19 @@ from matplotlib import pyplot as plt
 import mygrad as mg
 
 
-# build the Unit class
+# build the unit class
 class Unit:
     """ Class describing the unit, either a hidden,
     input or output unit 
     """
-    def __init__(self, activation_function : function,
+    def __init__(self, activation_function : callable[float, float],
     weights_array : np.ndarray, bias : float, eta : float):
         """ Defining the constructor.
 
         Attributes
         ----------
         activation:function : function
-            Activation function to be applied to net
+            Activation function to be applied to net of
             the current unit, so it is a one variable
             function defined outside the network.
 
@@ -35,7 +35,7 @@ class Unit:
         self.bias = bias
         self.eta = eta
 
-    def feedforward_unit(self, inputs_ : np.ndarray):
+    def feedforward_unit(self, inputs : np.ndarray) -> float:
         """ Method for the forward propagation of the unit.
 
         Arguments
@@ -49,10 +49,10 @@ class Unit:
         self.unit_output : float
             Coputation of the unit output.
         """
-        self.inputs_ = inputs_
+        self.inputs = inputs
 
         # computing the net and the output of the unit
-        self.net = np.inner(self.weights_array, self.inputs_) + self.bias
+        self.net = np.inner(self.weights_array, self.inputs) + self.bias
         self.unit_output = self.activation_function(self.net) 
 
         return self.unit_output
@@ -69,7 +69,7 @@ class OutputUnit(Unit):
         Unit.__init__()
 
 
-    def backprop_unit(self, target: float):
+    def backprop_unit(self, target: float) -> float:
         """ Method for the backpropagation of the output unit.
 
         Arguments
@@ -90,7 +90,7 @@ class OutputUnit(Unit):
         delta = (target - self.unit_output) * activationf.backward()
 
         # update the weights
-        self.weights = self.weights + self.eta *  delta * self.inputs_
+        self.weights = self.weights + self.eta *  delta * self.inputs
 
         return delta
 
@@ -104,13 +104,13 @@ class HiddenUnit(Unit):
         # call the contructor of the Father class
         Unit.__init__()
 
-    def backprop_unit(self, delta_next, weights_array_next):
+    def backprop_unit(self, delta_next, weights_array_next) -> float:
         # compute the error signal for the hidden unit
         activationf = self.activation_function(mg.tensor(self.net))
         delta = (np.inner(delta_next, weights_array_next)) * activationf.backward()
 
         # update the weights
-        self.weights_array = self.weights_array + self.eta * delta * self.inputs_
+        self.weights_array = self.weights_array + self.eta * delta * self.inputs
 
         return delta
 
