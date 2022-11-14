@@ -52,8 +52,8 @@ class Unit:
         self.inputs_ = inputs_
 
         # computing the net and the output of the unit
-        self.net = np.inner(self.weights_array, self.inputs_)
-        self.unit_output = self.activation_function(self.net) + self.bias
+        self.net = np.inner(self.weights_array, self.inputs_) + self.bias
+        self.unit_output = self.activation_function(self.net) 
 
         return self.unit_output
 
