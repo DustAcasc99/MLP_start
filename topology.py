@@ -1,3 +1,7 @@
+
+""" Python code in which are are defined some classes
+for the units, the layers ande the network."""
+
 # import the packages
 import numpy as np
 from matplotlib import pyplot as plt
@@ -15,7 +19,7 @@ class Unit:
 
         Attributes
         ----------
-        activation:function : function
+        activation_function : callable[float, float]
             Activation function to be applied to net of
             the current unit, so it is a one variable
             function defined outside the network.
@@ -41,14 +45,15 @@ class Unit:
         Arguments
         ----------
         inputs_ : arraylike of shape (n_components)
-            Set of data (output) from the units of the previous
-            layer. The lenght of this vector is the fan in.
+            Set of data in input (output from the units of the 
+            previous layer). The lenght of this vector is the fan in.
 
         Return
         ----------
         self.unit_output : float
             Coputation of the unit output.
         """
+        # load the input int hte attribute
         self.inputs = inputs
 
         # computing the net and the output of the unit
@@ -65,7 +70,7 @@ class OutputUnit(Unit):
 
     def __init__(self):
 
-        # call the contructor of the Father class
+        # call the contructor of the father class
         Unit.__init__()
 
 
@@ -74,11 +79,8 @@ class OutputUnit(Unit):
 
         Arguments
         ----------
-        error : arraylike of shape (n_components)
-            Difference between output and label of the output unit.
-
-        fix_eta : bool
-            Control parameter for eta, where False means change.
+        target : float
+            Label of the present sample for the output unit.
 
         Return
         ----------
@@ -88,6 +90,11 @@ class OutputUnit(Unit):
         # compute the error signal for the output unit
         activationf = self.activation_function(mg.tensor(self.net))
         delta = (target - self.unit_output) * activationf.backward()
+
+        ### I ried to run the commands for the drivative on shell, but 
+        ### something like func.backward() is a NoneType and not a number.
+        ### Also the term backward is something not well to read in a
+        ### method for the backward propagation. (Andrea)
 
         # update the weights
         self.weights = self.weights + self.eta *  delta * self.inputs
@@ -101,10 +108,28 @@ class HiddenUnit(Unit):
     """
 
     def __init__(self):
+
         # call the contructor of the Father class
         Unit.__init__()
 
     def backprop_unit(self, delta_next, weights_array_next) -> float:
+        """ Method for the backpropagation of the output unit.
+
+        Arguments
+        ----------
+        delta_next : arraylike of shape (n_components)
+            Deltas calculated whith backpropagation for the
+            next layer in the network.
+
+        weights_array: arraylike of shape (n_components)
+            Weights of the synapses linked to the output of
+            the present unit.
+
+        Return
+        ----------
+        self.delta : float
+            Small delta for the unit (delta_j).
+        """
         # compute the error signal for the hidden unit
         activationf = self.activation_function(mg.tensor(self.net))
         delta = (np.inner(delta_next, weights_array_next)) * activationf.backward()
