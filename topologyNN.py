@@ -52,7 +52,7 @@ class Unit:
 
         # definition of attributes useful for class methods
         self.inputs = np.ndarray
-        self.output = np.ndarray
+        self.output = float
         self.net = float
 
 
