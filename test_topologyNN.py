@@ -9,7 +9,7 @@ from topologyNN import OutputUnit, HiddenUnit
 # defining a linear activation function
 def linear(net):
 
-    """ Functio simply returning the input.
+    """ Function simply returning the input.
     """
 
     return net
@@ -20,8 +20,8 @@ class TestNetworkUnits(unittest.TestCase):
     ot the classes OutputUnit and HiddenUnit.
     """
 
-    def setUp(self, fan_in=5):
-        
+    def setUp(self, fan_in = 5):
+
         """ Setup information for the neurons.
         """
 
@@ -37,7 +37,7 @@ class TestNetworkUnits(unittest.TestCase):
         self.target_hidunit = HiddenUnit(linear, self.weights, self.bias, self.eta)
 
     def test_contructor(self):
-        
+
         """ Test for the basic attriutes of unit's contructor.
         """
 
@@ -47,7 +47,8 @@ class TestNetworkUnits(unittest.TestCase):
         self.assertTrue(self.target_hidunit.eta == self.eta)
 
         # checking the equality between output unit and hidden unit contructor
-        self.assertTrue((self.target_hidunit.weights_array == self.target_outunit.weights_array).all())
+        self.assertTrue((self.target_hidunit.weights_array
+                         == self.target_outunit.weights_array).all())
         self.assertTrue(self.target_hidunit.bias == self.target_outunit.bias)
         self.assertTrue(self.target_hidunit.eta == self.target_outunit.eta)
 
@@ -55,7 +56,7 @@ class TestNetworkUnits(unittest.TestCase):
 
         """ Test for the feedforward mthod for units.
         """
-        
+
         # test output unit computation
         computed = self.target_outunit.feedforward_unit(self.inputs)
         expected = np.inner(self.inputs, self.weights) + self.bias
@@ -67,7 +68,7 @@ class TestNetworkUnits(unittest.TestCase):
         self.assertEqual(computed, expected)
 
     def test_backprop_unit(self):
-        
+
         """ Test for the backporpagation methods for units.
         """
 
@@ -88,6 +89,6 @@ class TestNetworkUnits(unittest.TestCase):
         print(f'Weights array after backpropagation of HiddenUnit (should increase): \
                 \n {self.target_hidunit.weights_array}')
         print(f'The computed delta: {delta_j} \n')
-        
+
 if __name__ == "__main__":
     unittest.main()
