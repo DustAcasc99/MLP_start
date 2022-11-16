@@ -2,7 +2,7 @@
 
 ### ML project for the Machine Learning course
 
-#### Software to implement a NN from scratch
+#### Software to implement a NN from scratch 🎆
 
 **Files:** 
 
