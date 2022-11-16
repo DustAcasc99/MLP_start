@@ -1,6 +1,6 @@
 # MLP_start
 
-#### ML project for the Machine Learning course
+### ML project for the Machine Learning course
 
 **Files:** 
 
