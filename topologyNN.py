@@ -1,5 +1,5 @@
-"""
-   Classes used to define the topology of the Fully-Connected NN
+
+""" Classes used to define the topology of the Fully-Connected NN
 """
 
 # import the packages
@@ -44,12 +44,15 @@ class Unit:
         net : float
             The weighted sum of the inputs to the units at hand.
         """
+        # definition of attributes using contructor's arguments
         self.activation_function = activation_function
         self.weights_array = weights_array
         self.bias = bias
         self.eta = eta
 
+        # definition of attributes useful for class methods
         self.inputs = np.ndarray
+        self.output = np.ndarray
         self.net = float
 
 
@@ -68,13 +71,14 @@ class Unit:
         self.unit_output : float
             The computed unit output.
         """
+        # saving the inputs (also for backpropagation)
         self.inputs = inputs
 
         # computing the net and the output of the unit
         self.net = np.inner(self.weights_array, self.inputs) + self.bias
-        unit_output = self.activation_function(self.net)
+        self.output = self.activation_function(self.net)
 
-        return unit_output
+        return self.output
 
 
 
@@ -108,7 +112,7 @@ class OutputUnit(Unit):
         """
         # computes the error signal for the output unit. Note: we use the result
         # of the feedforward process
-        delta = ((target - self.feedforward_unit(self.inputs)) *
+        delta = ((target - self.output) *
                   misc.derivative(self.activation_function, self.net))
 
         # updates the weights (connections with the units of the previous layer)
@@ -271,7 +275,7 @@ class HiddenLayer:
             to every unit of the hidden layer at hand.
 
         weights_matrix : np.ndarray
-            Matrix (number of units in the hidden layer x number of inputs) with the weights,
+            Matrix (number of units in the hidden layer x fan in) with the weights,
             connections of every unit of the hidden layer to those of the first inner layer
             of the network.
 
@@ -292,11 +296,11 @@ class HiddenLayer:
             high = 1/(np.sqrt(len(self.inputs))), size = (self.number_units, len(self.inputs)))
 
         # initializing the values of the bias for every unit of the hidden layer
-        self.bias_array = np.zeros(len(self.number_units))
+        self.bias_array = np.zeros(self.number_units)
 
         # composition with the single HiddenUnit class
         self.hidden_units = [HiddenUnit(activation_function, self.weights_matrix[i, :],
-            self.bias_array[i], eta) for i in enumerate(self.number_units)]
+            self.bias_array[i], eta) for i in range(self.number_units)]
 
 
     def feedforward_layer(self) -> np.ndarray:
