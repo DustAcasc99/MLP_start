@@ -2,12 +2,12 @@
 
 ### ML project for the Machine Learning course
 
-#### <font color="coral">*Software to implement a NN from scratch*</font> 🎆
+#### *Software to implement a NN from scratch* 🎆
 
-<font color="yellow">**Files:**</font>
+**Files:**
 
 - topologyNN: python file with the units and layers classes
 
-<font color="yellow">**Folders:**</font>
+**Folders:**
 
 - tests: folder with python test files 
