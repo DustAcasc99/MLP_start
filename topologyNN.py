@@ -52,7 +52,7 @@ class Unit:
 
         # definition of attributes useful for class methods
         self.inputs = np.ndarray
-        self.output = float
+        self.output = np.ndarray
         self.net = float
 
 
@@ -199,6 +199,12 @@ class OutputLayer:
 
         output_units : list
             List of Output Units that create our output layer.
+
+        layer_outputs : np.ndarray
+            Array with the computed outputs of every unit in the output layer.
+
+        layer_delta : np.ndarray
+            Array with delta values computed for every unit in the output layer.
         """
 
         self.number_units = number_units
@@ -213,8 +219,14 @@ class OutputLayer:
         self.bias_array = np.zeros(self.number_units)
 
         # composition with the single OutputUnit class
-        self.output_units = [OutputUnit(activation_function, self.weights_matrix[i, :],
-            self.bias_array[i], eta) for i in range(self.number_units)]
+        self.output_units = np.array(OutputUnit(activation_function, self.weights_matrix[i, :],
+            self.bias_array[i], eta) for i in range(self.number_units))
+
+        # initializing the output values for every unit of the hidden layer
+        self.layer_outputs = np.zeros(self.number_units)
+
+        # initializing the array with delta values for every unit of the hidden layer
+        self.layer_delta = np.zeros(self.number_units)
 
 
     def feedforward_layer(self) -> np.ndarray:
@@ -229,9 +241,10 @@ class OutputLayer:
         # computes the output of all the units in the output layer and collects
         # them in a numpy array (Note: we're considering a fully-connected NN, else we couldn't
         # take the same inputs for all the units in the layer at hand)
-        layer_outputs =  np.array(self.output_units.feedforward_unit(self.inputs))
+        for i in range(self.number_units):
+            self.layer_outputs[i] =  self.output_units[i].feedforward_unit(self.inputs)
 
-        return layer_outputs
+        return self.layer_outputs
 
 
     def backprop_layer(self, target_layer : np.ndarray) -> np.ndarray:
@@ -249,9 +262,10 @@ class OutputLayer:
             Array with delta values computed for every unit in the output layer.
         """
         # computes the delta for every unit in the output layer and updates the weights
-        layer_delta =  np.array(self.output_units.backprop_unit(target_layer))
+        for i in range(self.number_units):
+            self.layer_delta[i] =  self.output_units[i].backprop_unit(target_layer[i])
 
-        return layer_delta
+        return self.layer_delta
 
 
 
@@ -284,8 +298,13 @@ class HiddenLayer:
 
         hidden_units : list
             List of Hidden Units that create our hidden layer.
-        """
 
+       layer_outputs : np.ndarray
+            Array with the computed outputs of every unit in the hidden layer.
+
+        layer_delta : np.ndarray
+            Array with delta values computed for every unit in the hidden layer.
+        """
         self.number_units = number_units
         self.inputs = inputs
 
@@ -299,8 +318,14 @@ class HiddenLayer:
         self.bias_array = np.zeros(self.number_units)
 
         # composition with the single HiddenUnit class
-        self.hidden_units = [HiddenUnit(activation_function, self.weights_matrix[i, :],
-            self.bias_array[i], eta) for i in range(self.number_units)]
+        self.hidden_units = np.array(HiddenUnit(activation_function, self.weights_matrix[i, :],
+            self.bias_array[i], eta) for i in range(self.number_units))
+
+        # initializing the output values for every unit of the hidden layer
+        self.layer_outputs = np.zeros(self.number_units)
+
+        # initializing the array with delta values for every unit of the hidden layer
+        self.layer_delta = np.zeros(self.number_units)
 
 
     def feedforward_layer(self) -> np.ndarray:
@@ -315,9 +340,10 @@ class HiddenLayer:
         # computes the output of all the units in the layer at hand and collects
         # them in a numpy array (Note: we're considering a fully-connected NN, else we couldn't
         # take the same inputs for all the units in the layer at hand)
-        layer_outputs =  np.array(self.hidden_units.feedforward_unit(self.inputs))
+        for i in range(self.number_units):
+            self.layer_outputs[i] =  self.hidden_units[i].feedforward_unit(self.inputs)
 
-        return layer_outputs
+        return self.layer_outputs
 
 
     def backprop_layer(self, delta_next : np.ndarray,
@@ -341,6 +367,7 @@ class HiddenLayer:
             Array with delta values computed for every unit in the hidden layer.
         """
         # computes the delta for every unit in the layer at hand and updates the weights
-        layer_delta =  np.array(self.hidden_units.backprop_unit(delta_next, weights_matrix_next))
+        for i in range(self.number_units):
+            self.layer_delta[i] =  self.hidden_units[i].backprop_unit(delta_next, weights_matrix_next[i, :])
 
-        return layer_delta
+        return self.layer_delta
