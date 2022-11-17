@@ -118,14 +118,14 @@ class TestNetworkLayers(unittest.TestCase):
         # note: we're considering the number of units of the first
         # outer layer equal to that of the layer at hand + 1
         self.delta_next = np.full((self.number_units), 0.5)
-        self.weights_matrix_next = np.ones(self.number_units + 1, self.number_units)
+        self.weights_matrix_next = np.ones((self.number_units + 1, self.number_units))
 
         # defining the target objects that we need to test
         self.target_outlayer = OutputLayer(linear, self.eta, self.number_units, self.inputs)
         self.target_hidlayer = HiddenLayer(linear, self.eta, self.number_units, self.inputs)
 
         # initializing the weights matrix and the bias array values
-        self.target_outlayer.weights_matrix = np.ones(self.number_units, fan_in)
+        self.target_outlayer.weights_matrix = np.ones((self.number_units, fan_in))
         self.target_hidlayer.bias_array = np.zeros(self.number_units)
 
 
