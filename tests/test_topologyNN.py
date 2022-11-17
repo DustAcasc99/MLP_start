@@ -5,9 +5,11 @@
 # import packages and classes
 import unittest
 import numpy as np
-from neuralnetwork.topologyNN import OutputUnit, HiddenUnit
+from neuralnetwork.topologyNN import OutputUnit, HiddenUnit, OutputLayer, HiddenLayer
 
-# defining a linear activation function
+# Tests for a linear activation function
+
+# defines a linear activation function
 def linear(net):
 
     """ Function simply returning the input.
@@ -15,6 +17,8 @@ def linear(net):
 
     return net
 
+
+# tests for the units classes
 class TestNetworkUnits(unittest.TestCase):
 
     """ Class containing a test for every functionality
@@ -33,13 +37,13 @@ class TestNetworkUnits(unittest.TestCase):
         self.label = 1.
         self.eta = 1.
 
-        # defining the target objects
+        # defining the target objects that we need to test
         self.target_outunit = OutputUnit(linear, self.weights, self.bias, self.eta)
         self.target_hidunit = HiddenUnit(linear, self.weights, self.bias, self.eta)
 
     def test_contructor(self):
 
-        """ Test for the basic attriutes of unit's contructor.
+        """ Test for the basic attributes of the unit's contructor.
         """
 
         # checking the correct load of data in the contructor
@@ -55,7 +59,7 @@ class TestNetworkUnits(unittest.TestCase):
 
     def test_feedforward(self):
 
-        """ Test for the feedforward mthod for units.
+        """ Test for the feedforward method for units.
         """
 
         # test output unit computation
@@ -70,7 +74,7 @@ class TestNetworkUnits(unittest.TestCase):
 
     def test_backprop_unit(self):
 
-        """ Test for the backporpagation methods for units.
+        """ Test for the backpropagation methods for units.
         """
 
         # let's see what appens to weights during backpropagation for output unit
@@ -90,6 +94,94 @@ class TestNetworkUnits(unittest.TestCase):
         print(f'Weights array after backpropagation of HiddenUnit (should increase): \
                 \n {self.target_hidunit.weights_array}')
         print(f'The computed delta: {delta_j} \n')
+
+
+
+# tests for the layers classes
+class TestNetworkLayers(unittest.TestCase):
+
+    """ Class containing a test for every functionality
+    ot the classes OutputLayer and HiddenLayer.
+    """
+    def setUp(self, fan_in = 5):
+
+        """ Setup information for the layer.
+        """
+
+        # defining some data and some weights
+        self.number_units = 6
+        self.inputs = np.ones(fan_in)
+        self.eta = 1.
+
+        # target values for the units of the output layer
+        self.target_olayer = np.full((self.number_units), 3)
+        # note: we're considering the number of units of the first
+        # outer layer equal to that of the layer at hand + 1
+        self.delta_next = np.full((self.number_units), 0.5)
+        self.weights_matrix_next = np.ones(self.number_units + 1, self.number_units)
+
+        # defining the target objects that we need to test
+        self.target_outlayer = OutputLayer(linear, self.eta, self.number_units, self.inputs)
+        self.target_hidlayer = HiddenLayer(linear, self.eta, self.number_units, self.inputs)
+
+        # initializing the weights matrix and the bias array values
+        self.target_outlayer.weights_matrix = np.ones(self.number_units, fan_in)
+        self.target_hidlayer.bias_array = np.zeros(self.number_units)
+
+
+    def test_layercontructor(self):
+
+        """ Test for attributes of the output layer's contructor.
+        """
+
+        # checking the correct load of data in the contructor
+        self.assertTrue(self.target_outlayer.eta == self.eta)
+        self.assertTrue(self.target_outlayer.number_units == self.number_units)
+        self.assertTrue(self.target_outlayer.inputs == self.inputs)
+
+       # checking the equality between output layer and hidden layer contructor
+        self.assertTrue(self.target_outlayer.eta == self.target_hidlayer.eta)
+        self.assertTrue(self.target_outlayer.number_units == self.target_hidlayer.number_units)
+        self.assertTrue(self.target_outlayer.inputs == self.target_hidlayer.inputs)
+
+
+    def test_layerfeedforward(self):
+
+        """ Test for the feedforward method for layers.
+        """
+
+        # test output layer computation
+        computed = self.target_outlayer.feedforward_layer()
+        expected = (np.inner(self.inputs, self.target_outlayer.weights_matrix)
+                   + self.target_outlayer.bias_array)
+        self.assertEqual(computed, expected)
+
+        # test hidden layer computation
+        computed = self.target_hidlayer.feedforward_layer()
+        expected = (np.inner(self.inputs, self.target_hidlayer.weights_matrix)
+                   + self.target_hidlayer.bias_array)
+        self.assertEqual(computed, expected)
+
+
+    def test_layerbackprop(self):
+
+        """ Test for the backpropagation methods for layers.
+        """
+
+        # for the output layer:
+        # output of every layer's unit after the feedforward propagation
+        layer_outoutput = self.target_outlayer.feedforward_layer()
+
+        computed = self.target_outlayer.backprop_layer(self.target_olayer)
+        expected = (self.target_olayer - layer_outoutput)
+        self.assertEqual(computed, expected)
+
+        # for the hidden layer:
+        computed = self.target_hidlayer.backprop_layer(self.delta_next, self.weights_matrix_next)
+        expected = np.inner(self.delta_next, self.weights_matrix_next)
+        self.assertEqual(computed, expected)
+
+
 
 if __name__ == "__main__":
     unittest.main()

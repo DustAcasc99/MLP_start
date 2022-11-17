@@ -189,6 +189,10 @@ class OutputLayer:
             Array with the inputs coming from the units of the first inner layer
             to every unit of the output layer.
 
+        eta : float
+            Learning rate for the alghoritm speed control.
+
+
         weights_matrix : np.ndarray
             Matrix (number of units in the output layer x number of inputs) with the weights,
             connections of every unit of the output layer to those of the first inner layer
@@ -209,18 +213,19 @@ class OutputLayer:
 
         self.number_units = number_units
         self.inputs = inputs
+        self.eta = eta
 
         # initializing the weights_matrix with random values chosen from a uniform
         # distribution and with values from the interval [0,1]
         self.weights_matrix = np.random.uniform(low = 0., high = 1.,
-            size = (self.number_units, self.inputs))
+            size = (self.number_units, len(self.inputs)))
 
         # initializing the values of the bias for every unit of the output layer
         self.bias_array = np.zeros(self.number_units)
 
         # composition with the single OutputUnit class
         self.output_units = np.array(OutputUnit(activation_function, self.weights_matrix[i, :],
-            self.bias_array[i], eta) for i in range(self.number_units))
+            self.bias_array[i], self.eta) for i in range(self.number_units))
 
         # initializing the output values for every unit of the hidden layer
         self.layer_outputs = np.zeros(self.number_units)
@@ -288,6 +293,10 @@ class HiddenLayer:
             Array with the inputs coming from the units of the first inner layer
             to every unit of the hidden layer at hand.
 
+        eta : float
+            Learning rate for the alghoritm speed control.
+
+
         weights_matrix : np.ndarray
             Matrix (number of units in the hidden layer x fan in) with the weights,
             connections of every unit of the hidden layer to those of the first inner layer
@@ -307,6 +316,7 @@ class HiddenLayer:
         """
         self.number_units = number_units
         self.inputs = inputs
+        self.eta = eta
 
         # initializing the weights_matrix with random values chosen from a uniform
         # distribution and with values from the symmetric interval centered in 0 and
@@ -319,7 +329,7 @@ class HiddenLayer:
 
         # composition with the single HiddenUnit class
         self.hidden_units = np.array(HiddenUnit(activation_function, self.weights_matrix[i, :],
-            self.bias_array[i], eta) for i in range(self.number_units))
+            self.bias_array[i], self.eta) for i in range(self.number_units))
 
         # initializing the output values for every unit of the hidden layer
         self.layer_outputs = np.zeros(self.number_units)
