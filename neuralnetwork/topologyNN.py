@@ -96,7 +96,7 @@ class OutputUnit(Unit):
         super().__init__(activation_function, weights_array, bias, eta)
 
 
-    def backprop_unit(self, target: float) -> float:
+    def backprop_unit(self, target: float) -> list:
 
         """ Method for the backpropagation of the output unit.
 
@@ -136,7 +136,7 @@ class HiddenUnit(Unit):
         super().__init__(activation_function, weights_array, bias, eta)
 
 
-    def backprop_unit(self, delta_next : np.ndarray, weights_array_next : np.ndarray) -> float:
+    def backprop_unit(self, delta_next : np.ndarray, weights_array_next : np.ndarray) -> list:
 
         """ Method for the backpropagation of the output unit.
 
@@ -164,7 +164,7 @@ class HiddenUnit(Unit):
 
         # returns the error signal for this output unit that will be used
         # to compute the backpropagation for the other hidden units of the network
-        return delta
+        return [delta, self.weights_array]
 
 
 
@@ -268,7 +268,9 @@ class OutputLayer:
         """
         # computes the delta for every unit in the output layer and updates the weights
         for i in range(self.number_units):
-            self.layer_delta[i] =  self.output_units[i].backprop_unit(target_layer[i])
+            result =  self.output_units[i].backprop_unit(target_layer[i])
+            self.layer_delta[i] = result[0]
+            self.weights_matrix[i, :] = result[1]
 
         return self.layer_delta
 
