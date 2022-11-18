@@ -96,7 +96,7 @@ class OutputUnit(Unit):
         super().__init__(activation_function, weights_array, bias, eta)
 
 
-    def backprop_unit(self, target: float) -> list:
+    def backprop_unit(self, target: float) -> float:
 
         """ Method for the backpropagation of the output unit.
 
@@ -136,7 +136,7 @@ class HiddenUnit(Unit):
         super().__init__(activation_function, weights_array, bias, eta)
 
 
-    def backprop_unit(self, delta_next : np.ndarray, weights_array_next : np.ndarray) -> list:
+    def backprop_unit(self, delta_next : np.ndarray, weights_array_next : np.ndarray) -> float:
 
         """ Method for the backpropagation of the output unit.
 
@@ -164,7 +164,7 @@ class HiddenUnit(Unit):
 
         # returns the error signal for this output unit that will be used
         # to compute the backpropagation for the other hidden units of the network
-        return [delta, self.weights_array]
+        return delta
 
 
 
@@ -268,9 +268,8 @@ class OutputLayer:
         """
         # computes the delta for every unit in the output layer and updates the weights
         for i in range(self.number_units):
-            result =  self.output_units[i].backprop_unit(target_layer[i])
-            self.layer_delta[i] = result[0]
-            self.weights_matrix[i, :] = result[1]
+            self.layer_delta[i] =  self.output_units[i].backprop_unit(target_layer[i])
+            self.weights_matrix[i, :] = self.output_units[i].weights_array
 
         return self.layer_delta
 
@@ -310,7 +309,7 @@ class HiddenLayer:
         hidden_units : list
             List of Hidden Units that create our hidden layer.
 
-       layer_outputs : np.ndarray
+        layer_outputs : np.ndarray
             Array with the computed outputs of every unit in the hidden layer.
 
         layer_delta : np.ndarray
@@ -381,5 +380,6 @@ class HiddenLayer:
         # computes the delta for every unit in the layer at hand and updates the weights
         for i in range(self.number_units):
             self.layer_delta[i] =  self.hidden_units[i].backprop_unit(delta_next, weights_matrix_next[i, :])
+            self.weights_matrix[i, :] = self.hidden_units[i].weights_array
 
         return self.layer_delta

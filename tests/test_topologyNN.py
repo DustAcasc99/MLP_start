@@ -81,7 +81,7 @@ class TestNetworkUnits(unittest.TestCase):
         print(f'Weights array before backpropagation of OutputUnit: \
                 \n {self.target_outunit.weights_array}')
         self.target_outunit.feedforward_unit(self.inputs) # initialize the attributes
-        delta_k = (self.target_outunit.backprop_unit(self.label))[0]
+        delta_k = (self.target_outunit.backprop_unit(self.label))
         print(f'Weights array after backpropagation of OutputUnit (should be decreased): \
                 \n {self.target_outunit.weights_array}')
         print(f'The computed delta: {delta_k} \n')
@@ -90,7 +90,7 @@ class TestNetworkUnits(unittest.TestCase):
         print(f'Weights array before backpropagation of HiddenUnit: \
                 \n {self.target_hidunit.weights_array}')
         self.target_hidunit.feedforward_unit(self.inputs) # initialize the attributes
-        delta_j = (self.target_hidunit.backprop_unit(delta_k, self.target_outunit.weights_array[1]))[0] # j=1
+        delta_j = (self.target_hidunit.backprop_unit(delta_k, self.target_outunit.weights_array[1])) # j=1
         print(f'Weights array after backpropagation of HiddenUnit (should increase): \
                 \n {self.target_hidunit.weights_array}')
         print(f'The computed delta: {delta_j} \n')
@@ -193,6 +193,8 @@ class TestNetworkLayers(unittest.TestCase):
         # print the weights matrix before the backpropagation
         print(f'The weights matrix before the backpropagation of the HiddenLayer: \
                \n {self.target_hidlayer.weights_matrix}')
+
+        layer_outoutput = self.target_hidlayer.feedforward_layer()
 
         computed = self.target_hidlayer.backprop_layer(self.delta_next, self.weights_matrix_next)
         expected = np.inner(self.delta_next, self.weights_matrix_next)
