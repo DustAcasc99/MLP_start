@@ -126,6 +126,9 @@ class TestNetworkLayers(unittest.TestCase):
 
         # initializing the weights matrix and the bias array values
         self.target_outlayer.weights_matrix = np.ones((self.number_units, fan_in))
+        self.target_hidlayer.weights_matrix = np.ones((self.number_units, fan_in))
+
+        self.target_outlayer.bias_array = np.zeros(self.number_units)
         self.target_hidlayer.bias_array = np.zeros(self.number_units)
 
 
