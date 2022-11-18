@@ -77,7 +77,7 @@ class TestNetworkUnits(unittest.TestCase):
         """ Test for the backpropagation methods for units.
         """
 
-        # let's see what appens to weights during backpropagation for output unit
+        # let's see what happens to weights during backpropagation for the output unit
         print(f'Weights array before backpropagation of OutputUnit: \
                 \n {self.target_outunit.weights_array}')
         self.target_outunit.feedforward_unit(self.inputs) # initialize the attributes
@@ -86,7 +86,7 @@ class TestNetworkUnits(unittest.TestCase):
                 \n {self.target_outunit.weights_array}')
         print(f'The computed delta: {delta_k} \n')
 
-        # let's see what appens to weights during backpropagation for hidden unit
+        # let's see what appens to weights during backpropagation for the hidden unit
         print(f'Weights array before backpropagation of HiddenUnit: \
                 \n {self.target_hidunit.weights_array}')
         self.target_hidunit.feedforward_unit(self.inputs) # initialize the attributes
@@ -172,6 +172,11 @@ class TestNetworkLayers(unittest.TestCase):
         """
 
         # for the output layer:
+
+        # print the weights matrix before the backpropagation
+        print(f'The weights matrix before the backpropagation of the OutputLayer: \
+               \n {self.target_outlayer.weights_matrix}')
+
         # output of every layer's unit after the feedforward propagation
         layer_outoutput = self.target_outlayer.feedforward_layer()
 
@@ -179,10 +184,23 @@ class TestNetworkLayers(unittest.TestCase):
         expected = (self.target_olayer - layer_outoutput)
         self.assertEqual(computed, expected)
 
+        # print the weights matrix before the backpropagation
+        print(f'The weights matrix after the backpropagation of the OutputLayer: \
+               \n {self.target_outlayer.weights_matrix}')
+
         # for the hidden layer:
+
+        # print the weights matrix before the backpropagation
+        print(f'The weights matrix before the backpropagation of the HiddenLayer: \
+               \n {self.target_hidlayer.weights_matrix}')
+
         computed = self.target_hidlayer.backprop_layer(self.delta_next, self.weights_matrix_next)
         expected = np.inner(self.delta_next, self.weights_matrix_next)
         self.assertEqual(computed, expected)
+
+        # print the weights matrix before the backpropagation
+        print(f'The weights matrix after the backpropagation of the HiddenLayer: \
+               \n {self.target_hidlayer.weights_matrix}')
 
 
 
