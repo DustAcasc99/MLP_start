@@ -51,6 +51,7 @@ class Unit:
         self.eta = eta
 
         # definition of attributes useful for class methods
+        self.iter = 0
         self.inputs = np.ndarray
         self.output = np.ndarray
         self.net = float
@@ -168,12 +169,13 @@ class HiddenUnit(Unit):
 
         # sum of gradients 
         gradients_sum = 0
-        for iter in range(minibatch_size):
+        for self.iter in range(minibatch_size):
             gradients_sum = gradients_sum + delta * self.inputs
             # updates the weights (connections with the units of the first inner layer)
             # do it only at the end of minibatch
-            if (iter == minibatch_size - 1):
+            if (self.iter == minibatch_size - 1):
                 self.weights_array = self.weights_array + (self.eta / minibatch_size) * gradients_sum
+                self.iter = 0
     
 
         # returns the error signal for this output unit that will be used
