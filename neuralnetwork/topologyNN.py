@@ -137,7 +137,7 @@ class HiddenUnit(Unit):
 
 
     def backprop_unit(self, delta_next : np.ndarray, weights_array_next : np.ndarray,
-                        minibatch_length=1) -> float:
+                        minibatch_size=1) -> float:
 
         """ Method for the backpropagation of the output unit.
 
@@ -154,8 +154,8 @@ class HiddenUnit(Unit):
         batch_length : int
             Number of samples in batch or mini-batch: it tells after how many calls of
             backprop_unit method the units weights must be updated.
-            minibatch _length = 1 .......... On-line.
-            minibatch _length = len(DataSet) .......... Batch.
+            minibatch _size = 1 ..................... On-line.
+            minibatch _size = len(DataSet) .......... Batch.
 
         Returns
         ----------
@@ -168,12 +168,12 @@ class HiddenUnit(Unit):
 
         # sum of gradients 
         gradients_sum = 0
-        for iter in range(minibatch_length):
+        for iter in range(minibatch_size):
             gradients_sum = gradients_sum + delta * self.inputs
             # updates the weights (connections with the units of the first inner layer)
             # do it only at the end of minibatch
-            if (iter == minibatch_length - 1):
-                self.weights_array = self.weights_array + (self.eta / minibatch_length) * gradients_sum
+            if (iter == minibatch_size - 1):
+                self.weights_array = self.weights_array + (self.eta / minibatch_size) * gradients_sum
     
 
         # returns the error signal for this output unit that will be used
