@@ -136,7 +136,8 @@ class HiddenUnit(Unit):
         super().__init__(activation_function, weights_array, bias, eta)
 
 
-    def backprop_unit(self, delta_next : np.ndarray, weights_array_next : np.ndarray) -> float:
+    def backprop_unit(self, delta_next : np.ndarray, weights_array_next : np.ndarray,
+                        minibatch_length=1) -> float:
 
         """ Method for the backpropagation of the output unit.
 
@@ -150,6 +151,12 @@ class HiddenUnit(Unit):
         weights_array_next : arraylike of shape (n_components)
             Array with the weights, connections with the units of the first outer layer.
 
+        batch_length : int
+            Number of samples in batch or mini-batch: it tells after how many calls of
+            backprop_unit method the units weights must be updated.
+            minibatch _length = 1 .......... On-line.
+            minibatch _length = len(DataSet) .......... Batch.
+
         Returns
         ----------
         delta : float
@@ -159,8 +166,15 @@ class HiddenUnit(Unit):
         delta = ((np.inner(delta_next, weights_array_next)) *
                   misc.derivative(self.activation_function, self.net))
 
-        # updates the weights (connections with the units of the first inner layer)
-        self.weights_array = self.weights_array + self.eta * delta * self.inputs
+        # sum of gradients 
+        gradients_sum = 0
+        for iter in range(minibatch_length):
+            gradients_sum = gradients_sum + delta * self.inputs
+            # updates the weights (connections with the units of the first inner layer)
+            # do it only at the end of minibatch
+            if (iter == minibatch_length - 1):
+                self.weights_array = self.weights_array + (self.eta / minibatch_length) * gradients_sum
+    
 
         # returns the error signal for this output unit that will be used
         # to compute the backpropagation for the other hidden units of the network
