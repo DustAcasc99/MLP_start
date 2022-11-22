@@ -173,7 +173,7 @@ class HiddenUnit(Unit):
         self.counter = self.counter + 1
 
         # updates the weights (do it only at the end of minibatch)
-        if (self.counter == minibatch_size - 1):
+        if (self.counter == minibatch_size):
             self.weights_array = self.weights_array + (self.eta / minibatch_size) * \
                                     self.gradients_sum
             self.counter = 0
