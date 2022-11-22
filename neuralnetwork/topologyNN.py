@@ -51,7 +51,7 @@ class Unit:
         self.eta = eta
 
         # definition of attributes useful for class methods
-        self.iter = 0
+        self.counter = 0
         self.gradients_sum = 0.
         self.inputs = np.ndarray
         self.output = np.ndarray
@@ -168,17 +168,16 @@ class HiddenUnit(Unit):
         delta = ((np.inner(delta_next, weights_array_next)) *
                   misc.derivative(self.activation_function, self.net))
 
-        # sum of gradients
-        for self.iter in range(minibatch_size):
-            self.gradients_sum = self.gradients_sum + delta * self.inputs
-            # updates the weights (connections with the units of the first inner layer)
-            # do it only at the end of minibatch
-            if (self.iter == minibatch_size - 1):
-                self.weights_array = self.weights_array + (self.eta / minibatch_size) * \
-                                        self.gradients_sum
-                self.iter = 0
-                self.gradients_sum = 0.
-    
+        # sum of gradients and counter update
+        self.gradients_sum = self.gradients_sum + delta * self.inputs
+        self.counter = self.counter + 1
+
+        # updates the weights (do it only at the end of minibatch)
+        if (self.counter == minibatch_size - 1):
+            self.weights_array = self.weights_array + (self.eta / minibatch_size) * \
+                                    self.gradients_sum
+            self.counter = 0
+            self.gradients_sum = 0.
 
         # returns the error signal for this output unit that will be used
         # to compute the backpropagation for the other hidden units of the network
