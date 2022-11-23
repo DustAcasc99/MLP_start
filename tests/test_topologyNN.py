@@ -82,7 +82,7 @@ class TestNetworkUnits(unittest.TestCase):
                 \n {self.target_outunit.weights_array}')
         self.target_outunit.feedforward_unit(self.inputs) # initialize the attributes
         delta_k = (self.target_outunit.backprop_unit(self.label))
-        print(f'Weights array after backpropagation of OutputUnit (should be decreased): \
+        print(f'Weights array after backpropagation of OutputUnit (should decrease): \
                 \n {self.target_outunit.weights_array}')
         print(f'The computed delta: {delta_k} \n')
 
@@ -95,6 +95,17 @@ class TestNetworkUnits(unittest.TestCase):
                 \n {self.target_hidunit.weights_array}')
         print(f'The computed delta: {delta_j} \n')
 
+        # check the effect of one input with a minibatch > 1
+        delta_j = (self.target_hidunit.backprop_unit(delta_k,
+                    self.target_outunit.weights_array[1], minibatch_size=2))
+        print(f'Weights array after backpropagation 1/2 of HiddenUnit (should be the same): \
+                \n {self.target_hidunit.weights_array}')
+        print(f'The computed delta: {delta_j} \n')
+        delta_j = (self.target_hidunit.backprop_unit(delta_k,
+                    self.target_outunit.weights_array[1], minibatch_size=2))
+        print(f'Weights array after backpropagation 2/2 of HiddenUnit (should change): \
+                \n {self.target_hidunit.weights_array}')
+        print(f'The computed delta: {delta_j} \n')
 
 
 # tests for the layers classes
