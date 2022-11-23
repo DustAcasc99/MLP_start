@@ -107,7 +107,7 @@ class OutputUnit(Unit):
         target : float
             The target value relative to the pattern that we've given as input.
 
-        batch_length : int
+        minibatch_size : int
             Number of samples in batch or mini-batch: it tells after how many calls of
             backprop_unit method the units weights must be updated.
             minibatch _size = 1 ..................... On-line.
@@ -167,7 +167,7 @@ class HiddenUnit(Unit):
         weights_array_next : arraylike of shape (n_components)
             Array with the weights, connections with the units of the first outer layer.
 
-        batch_length : int
+        minibatch_size : int
             Number of samples in batch or mini-batch: it tells after how many calls of
             backprop_unit method the units weights must be updated.
             minibatch _size = 1 ..................... On-line.
@@ -282,7 +282,7 @@ class OutputLayer:
         return self.layer_outputs
 
 
-    def backprop_layer(self, target_layer : np.ndarray) -> np.ndarray:
+    def backprop_layer(self, target_layer : np.ndarray, minibatch_size=1) -> np.ndarray:
 
         """ Method for the backpropagation of the output layer.
 
@@ -291,6 +291,12 @@ class OutputLayer:
         target_layer : np.ndarray
             Array with the target values for every unit of the output layer.
 
+        minibatch_size : int
+            Number of samples in batch or mini-batch: it tells after how many calls of
+            backprop_unit method the units weights must be updated.
+            minibatch _size = 1 ..................... On-line.
+            minibatch _size = len(DataSet) .......... Batch.
+
         Returns
         ----------
         layer_delta : np.ndarray
@@ -298,7 +304,7 @@ class OutputLayer:
         """
         # computes the delta for every unit in the output layer and updates the weights
         for i in range(self.number_units):
-            self.layer_delta[i] =  self.output_units[i].backprop_unit(target_layer[i])
+            self.layer_delta[i] =  self.output_units[i].backprop_unit(target_layer[i], minibatch_size)
             self.weights_matrix[i, :] = self.output_units[i].weights_array
 
         return self.layer_delta
@@ -388,7 +394,8 @@ class HiddenLayer:
 
 
     def backprop_layer(self, delta_next : np.ndarray,
-                        weights_matrix_next : np.ndarray) -> np.ndarray:
+                        weights_matrix_next : np.ndarray,
+                        minibatch_size=1) -> np.ndarray:
 
         """ Method for the backpropagation of the hidden layer.
 
@@ -402,6 +409,12 @@ class HiddenLayer:
             layer) with the weights, connections of every unit of the hidden layer to
             those of the first outer layer of the network.
 
+        minibatch_size : int
+            Number of samples in batch or mini-batch: it tells after how many calls of
+            backprop_unit method the units weights must be updated.
+            minibatch _size = 1 ..................... On-line.
+            minibatch _size = len(DataSet) .......... Batch.
+
         Returns
         ----------
         layer_delta : np.ndarray
@@ -409,7 +422,8 @@ class HiddenLayer:
         """
         # computes the delta for every unit in the layer at hand and updates the weights
         for i in range(self.number_units):
-            self.layer_delta[i] =  self.hidden_units[i].backprop_unit(delta_next, weights_matrix_next[i, :])
+            self.layer_delta[i] =  self.hidden_units[i].backprop_unit(delta_next, 
+                                    weights_matrix_next[i, :], minibatch_size)
             self.weights_matrix[i, :] = self.hidden_units[i].weights_array
 
         return self.layer_delta
