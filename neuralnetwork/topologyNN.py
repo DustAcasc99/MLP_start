@@ -98,7 +98,7 @@ class OutputUnit(Unit):
         super().__init__(activation_function, weights_array, bias, eta)
 
 
-    def backprop_unit(self, target: float) -> float:
+    def backprop_unit(self, target: float, minibatch_size=1) -> float:
 
         """ Method for the backpropagation of the output unit.
 
@@ -106,6 +106,12 @@ class OutputUnit(Unit):
         ----------
         target : float
             The target value relative to the pattern that we've given as input.
+
+        batch_length : int
+            Number of samples in batch or mini-batch: it tells after how many calls of
+            backprop_unit method the units weights must be updated.
+            minibatch _size = 1 ..................... On-line.
+            minibatch _size = len(DataSet) .......... Batch.
 
         Returns
         ----------
@@ -117,8 +123,16 @@ class OutputUnit(Unit):
         delta = ((target - self.output) *
                   misc.derivative(self.activation_function, self.net))
 
-        # updates the weights (connections with the units of the previous layer)
-        self.weights_array = self.weights_array + self.eta *  delta * self.inputs
+        # sum of gradients and counter update
+        self.gradients_sum = self.gradients_sum + delta * self.inputs
+        self.counter = self.counter + 1
+
+        # updates the weights (do it only at the end of minibatch)
+        if (self.counter == minibatch_size):
+            self.weights_array = self.weights_array + (self.eta / minibatch_size) * \
+                                    self.gradients_sum
+            self.counter = 0
+            self.gradients_sum = 0.
 
         # returns the error signal for this output unit that will be used
         # to compute the backpropagation for the first inner layer of the network
@@ -208,7 +222,6 @@ class OutputLayer:
 
         eta : float
             Learning rate for the alghoritm speed control.
-
 
         weights_matrix : np.ndarray
             Matrix (number of units in the output layer x number of inputs) with the weights,
