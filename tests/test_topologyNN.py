@@ -96,6 +96,7 @@ class TestNetworkUnits(unittest.TestCase):
         print(f'The computed delta: {delta_j} \n')
 
         # check the effect of one input with a minibatch > 1
+        self.target_hidunit.weights_array = self.weights
         delta_j = (self.target_hidunit.backprop_unit(delta_k,
                     self.target_outunit.weights_array[1], minibatch_size=2))
         print(f'Weights array after backpropagation 1/2 of HiddenUnit (should be the same): \
@@ -107,6 +108,22 @@ class TestNetworkUnits(unittest.TestCase):
                 \n {self.target_hidunit.weights_array}')
         print(f'The computed delta: {delta_j} \n')
 
+        # check the effect of momentum
+        self.target_hidunit.weights_array = self.weights
+        old = self.target_hidunit.old_weight_change
+        delta_j = (self.target_hidunit.backprop_unit(delta_k,
+                    self.target_outunit.weights_array[1]))
+        print(f'Weights array after backpropagation of HiddenUnit without alpha: \
+                \n {self.target_hidunit.weights_array}')
+        print(f'The computed delta: {delta_j} \n')
+        self.target_hidunit.weights_array = self.weights
+        self.target_hidunit.alpha = 0.5
+        self.target_hidunit.old_weight_change = old
+        delta_j = (self.target_hidunit.backprop_unit(delta_k,
+                    self.target_outunit.weights_array[1]))
+        print(f'Weights array after backpropagation of HiddenUnit with alpha: \
+                \n {self.target_hidunit.weights_array}')
+        print(f'The computed delta: {delta_j} \n')
 
 # tests for the layers classes
 class TestNetworkLayers(unittest.TestCase):
@@ -132,8 +149,8 @@ class TestNetworkLayers(unittest.TestCase):
         self.weights_matrix_next = np.ones((self.number_units + 1, self.number_units))
 
         # defining the target objects that we need to test
-        self.target_outlayer = OutputLayer(linear, self.eta, self.number_units, self.inputs)
-        self.target_hidlayer = HiddenLayer(linear, self.eta, self.number_units, self.inputs)
+        self.target_outlayer = OutputLayer(linear, self.number_units, self.inputs, self.eta)
+        self.target_hidlayer = HiddenLayer(linear, self.number_units, self.inputs, self.eta)
 
         # initializing the weights matrix and the bias array values
         self.target_outlayer.weights_matrix = np.ones((self.number_units, fan_in))
