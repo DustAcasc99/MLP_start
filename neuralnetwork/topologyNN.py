@@ -16,7 +16,8 @@ class Unit:
     """
 
     def __init__(self, activation_function : Callable[[float], float],
-    weights_array : np.ndarray, bias : float, eta : float):
+                weights_array : np.ndarray, bias : float, eta : float, 
+                alpha=None):
 
         """ Defining the constructor
 
@@ -37,9 +38,9 @@ class Unit:
         eta : float
             Learning rate for the alghoritm speed control.
 
-        inputs : arraylike of shape (n_components)
-            Set of data (output) from the units of the previous
-            layer.
+        alpha : NoneType or float
+            Coefficient for momentum implementation, with value None
+            if not implemented or a generic numbers pass from user.
 
         net : float
             The weighted sum of the inputs to the units at hand.
@@ -49,10 +50,12 @@ class Unit:
         self.weights_array = weights_array
         self.bias = bias
         self.eta = eta
+        self.alpha = alpha
 
         # definition of attributes useful for class methods
         self.counter = 0
         self.gradients_sum = 0.
+        self.old_weight_change = 0.
         self.inputs = np.ndarray
         self.output = np.ndarray
         self.net = float
@@ -91,11 +94,11 @@ class OutputUnit(Unit):
     """ Defining the class for an Output unit
     """
 
-    def __init__(self, activation_function : Callable[[float], float], weights_array: np.ndarray,
-        bias: float, eta: float):
+    def __init__(self, activation_function : Callable[[float], float], weights_array : np.ndarray,
+        bias : float, eta : float, alpha=None):
 
         # calls the contructor of the Unit class (the Parent class)
-        super().__init__(activation_function, weights_array, bias, eta)
+        super().__init__(activation_function, weights_array, bias, eta, alpha)
 
 
     def backprop_unit(self, target: float, minibatch_size=1) -> float:
@@ -131,6 +134,15 @@ class OutputUnit(Unit):
         if (self.counter == minibatch_size):
             self.weights_array = self.weights_array + (self.eta / minibatch_size) * \
                                     self.gradients_sum
+
+            # check if there must be a momentum
+            if self.alpha is not None:
+                self.weights_array = self.weights_array + self.alpha * self.old_weight_change
+            
+            # Adding the momentum
+            self.old_weight_change = (self.eta / minibatch_size) * self.gradients_sum
+
+            # reset quantities for next minibatch (or sample/epoch)
             self.counter = 0
             self.gradients_sum = 0.
 
@@ -146,10 +158,10 @@ class HiddenUnit(Unit):
     """
 
     def __init__(self, activation_function : Callable[[float], float], weights_array: np.ndarray,
-        bias: float, eta: float):
+        bias: float, eta: float, alpha=None):
 
         # calls the contructor of the Unit class
-        super().__init__(activation_function, weights_array, bias, eta)
+        super().__init__(activation_function, weights_array, bias, eta, alpha)
 
 
     def backprop_unit(self, delta_next : np.ndarray, weights_array_next : np.ndarray,
@@ -190,6 +202,15 @@ class HiddenUnit(Unit):
         if (self.counter == minibatch_size):
             self.weights_array = self.weights_array + (self.eta / minibatch_size) * \
                                     self.gradients_sum
+            
+            # check if there must be a momentum
+            if self.alpha is not None:
+                self.weights_array = self.weights_array + self.alpha * self.old_weight_change
+            
+            # Adding the momentum
+            self.old_weight_change = (self.eta / minibatch_size) * self.gradients_sum
+
+            # reset quantities for next minibatch (or sample/epoch)
             self.counter = 0
             self.gradients_sum = 0.
 
@@ -206,8 +227,9 @@ class OutputLayer:
     """ Class describing the Output layer of the network
     """
 
-    def __init__(self, activation_function : Callable[[float], float], eta: float,
-        number_units : int, inputs : np.ndarray):
+    def __init__(self, activation_function : Callable[[float], float],
+                number_units : int, inputs : np.ndarray, 
+                eta: float, alpha=None):
 
         """ Defining the constructor
 
@@ -222,6 +244,10 @@ class OutputLayer:
 
         eta : float
             Learning rate for the alghoritm speed control.
+
+        alpha : NoneType or float
+            Coefficient for momentum implementation, with value None
+            if not implemented or a generic numbers pass from user.
 
         weights_matrix : np.ndarray
             Matrix (number of units in the output layer x number of inputs) with the weights,
@@ -244,6 +270,7 @@ class OutputLayer:
         self.number_units = number_units
         self.inputs = inputs
         self.eta = eta
+        self.alpha = alpha
 
         # initializing the weights_matrix with random values chosen from a uniform
         # distribution and with values from the interval [0,1]
@@ -255,7 +282,7 @@ class OutputLayer:
 
         # composition with the single OutputUnit class
         self.output_units = np.array([OutputUnit(activation_function, self.weights_matrix[i, :],
-            self.bias_array[i], self.eta) for i in range(self.number_units)])
+            self.bias_array[i], self.eta, self.alpha) for i in range(self.number_units)])
 
         # initializing the output values for every unit of the hidden layer
         self.layer_outputs = np.zeros(self.number_units)
@@ -316,8 +343,9 @@ class HiddenLayer:
     """ Class describing a single Hidden layer of the network
     """
 
-    def __init__(self, activation_function: Callable[[float], float], eta: float,
-        number_units : int, inputs : np.ndarray):
+    def __init__(self, activation_function : Callable[[float], float],
+                number_units : int, inputs : np.ndarray,
+                eta : float, alpha=None):
 
         """ Defining the constructor
 
@@ -333,6 +361,9 @@ class HiddenLayer:
         eta : float
             Learning rate for the alghoritm speed control.
 
+        alpha : NoneType or float
+            Coefficient for momentum implementation, with value None
+            if not implemented or a generic numbers pass from user.
 
         weights_matrix : np.ndarray
             Matrix (number of units in the hidden layer x fan in) with the weights,
@@ -354,6 +385,7 @@ class HiddenLayer:
         self.number_units = number_units
         self.inputs = inputs
         self.eta = eta
+        self.alpha = alpha
 
         # initializing the weights_matrix with random values chosen from a uniform
         # distribution and with values from the symmetric interval centered in 0 and
@@ -366,7 +398,7 @@ class HiddenLayer:
 
         # composition with the single HiddenUnit class
         self.hidden_units = np.array([HiddenUnit(activation_function, self.weights_matrix[i, :],
-            self.bias_array[i], self.eta) for i in range(self.number_units)])
+            self.bias_array[i], self.eta, self.alpha) for i in range(self.number_units)])
 
         # initializing the output values for every unit of the hidden layer
         self.layer_outputs = np.zeros(self.number_units)
