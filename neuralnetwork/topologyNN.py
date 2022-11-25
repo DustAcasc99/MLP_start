@@ -1,5 +1,5 @@
 
-""" Classes used to define the topology of the Fully-Connected NN
+""" Classes used to define the topology of a Fully-Connected NN.
 """
 
 # import the packages
@@ -11,25 +11,25 @@ from scipy import misc
 # build the Unit class
 class Unit:
 
-    """ Class describing a single Unit, either a hidden,
-        input or output unit
+    """ Class describing a single unit, 
+        either a hidden or output unit.
     """
 
     def __init__(self, activation_function : Callable[[float], float],
                 weights_array : np.ndarray, bias : float, eta : float, 
-                alpha=None):
+                alpha=0., lamb=0.):
 
-        """ Defining the constructor
+        """ Defining the constructor.
 
         Attributes
         ----------
         activation_function : function
             Activation function to be applied to the net of
-            the unit at hand, so it is a one-variable
-            function defined outside the network.
+            the unit, so it is a one-variable function
+            defined outside the network.
 
         weights_array : arraylike of shape (n_components)
-            Weights fot the current unit, taken from the
+            Weights fot the current unit, to be taken from the
             weights matrix defined in the corrisponding layer.
 
         bias : float
@@ -38,12 +38,13 @@ class Unit:
         eta : float
             Learning rate for the alghoritm speed control.
 
-        alpha : NoneType or float
+        alpha : float
             Coefficient for momentum implementation, with value None
             if not implemented or a generic numbers pass from user.
 
-        net : float
-            The weighted sum of the inputs to the units at hand.
+        lamb : float
+            Lambda in the penalty term for regularization (word lambda
+            is not used because it is a reserved word in Python).
         """
         # definition of attributes using contructor's arguments
         self.activation_function = activation_function
@@ -51,6 +52,7 @@ class Unit:
         self.bias = bias
         self.eta = eta
         self.alpha = alpha
+        self.lamb = lamb
 
         # definition of attributes useful for class methods
         self.counter = 0
@@ -91,14 +93,14 @@ class Unit:
 # from the Unit class because the computation for the backpropagation is different
 class OutputUnit(Unit):
 
-    """ Defining the class for an Output unit
+    """ Defining the class for an output unit.
     """
 
     def __init__(self, activation_function : Callable[[float], float], weights_array : np.ndarray,
-        bias : float, eta : float, alpha=None):
+        bias : float, eta : float, alpha=0., lamb=0.):
 
         # calls the contructor of the Unit class (the Parent class)
-        super().__init__(activation_function, weights_array, bias, eta, alpha)
+        super().__init__(activation_function, weights_array, bias, eta, alpha, lamb)
 
 
     def backprop_unit(self, target: float, minibatch_size=1) -> float:
@@ -132,14 +134,12 @@ class OutputUnit(Unit):
 
         # updates the weights (do it only at the end of minibatch)
         if (self.counter == minibatch_size):
-            self.weights_array = self.weights_array + (self.eta / minibatch_size) * \
-                                    self.gradients_sum
-
-            # check if there must be a momentum
-            if self.alpha is not None:
-                self.weights_array = self.weights_array + self.alpha * self.old_weight_change
+            self.weights_array = self.weights_array + \
+                                    (self.eta / minibatch_size) * self.gradients_sum + \
+                                    self.alpha * self.old_weight_change - \
+                                    self.lamb * self.weights_array
             
-            # Adding the momentum
+            # update the momentum
             self.old_weight_change = (self.eta / minibatch_size) * self.gradients_sum
 
             # reset quantities for next minibatch (or sample/epoch)
@@ -154,14 +154,14 @@ class OutputUnit(Unit):
 
 class HiddenUnit(Unit):
 
-    """ Defining the class for a Hidden unit
+    """ Defining the class for a hidden unit.
     """
 
     def __init__(self, activation_function : Callable[[float], float], weights_array: np.ndarray,
-        bias: float, eta: float, alpha=None):
+        bias: float, eta: float, alpha=0., lamb=0.):
 
         # calls the contructor of the Unit class
-        super().__init__(activation_function, weights_array, bias, eta, alpha)
+        super().__init__(activation_function, weights_array, bias, eta, alpha, lamb)
 
 
     def backprop_unit(self, delta_next : np.ndarray, weights_array_next : np.ndarray,
@@ -200,14 +200,12 @@ class HiddenUnit(Unit):
 
         # updates the weights (do it only at the end of minibatch)
         if (self.counter == minibatch_size):
-            self.weights_array = self.weights_array + (self.eta / minibatch_size) * \
-                                    self.gradients_sum
+            self.weights_array = self.weights_array + \
+                                    (self.eta / minibatch_size) * self.gradients_sum + \
+                                    self.alpha * self.old_weight_change - \
+                                    self.lamb * self.weights_array
             
-            # check if there must be a momentum
-            if self.alpha is not None:
-                self.weights_array = self.weights_array + self.alpha * self.old_weight_change
-            
-            # Adding the momentum
+            # update the momentum
             self.old_weight_change = (self.eta / minibatch_size) * self.gradients_sum
 
             # reset quantities for next minibatch (or sample/epoch)
@@ -224,17 +222,22 @@ class HiddenUnit(Unit):
 # layers to take into account the differences in their methods
 class OutputLayer:
 
-    """ Class describing the Output layer of the network
+    """ Class describing an output layer of the network.
     """
 
     def __init__(self, activation_function : Callable[[float], float],
                 number_units : int, inputs : np.ndarray, 
-                eta: float, alpha=None):
+                eta: float, alpha=0., lamb=0.):
 
         """ Defining the constructor
 
         Attributes
         ----------
+        activation_function : function
+            Activation function to be applied to the net of
+            the unit, so it is a one-variable function
+            defined outside the network.
+
         number_units : int
             Number of single units in the output layer.
 
@@ -249,28 +252,17 @@ class OutputLayer:
             Coefficient for momentum implementation, with value None
             if not implemented or a generic numbers pass from user.
 
-        weights_matrix : np.ndarray
-            Matrix (number of units in the output layer x number of inputs) with the weights,
-            connections of every unit of the output layer to those of the first inner layer
-            of the network.
-
-        bias_array : np.ndarray
-            Array with bias values for every unit of the output layer.
-
-        output_units : list
-            List of Output Units that create our output layer.
-
-        layer_outputs : np.ndarray
-            Array with the computed outputs of every unit in the output layer.
-
-        layer_delta : np.ndarray
-            Array with delta values computed for every unit in the output layer.
+        lamb : float
+            Lambda in the penalty term for regularization (word lambda
+            is not used because it is a reserved word in Python).
         """
 
+        # definition of attributes using contructor's arguments
         self.number_units = number_units
         self.inputs = inputs
         self.eta = eta
         self.alpha = alpha
+        self.lamb = lamb
 
         # initializing the weights_matrix with random values chosen from a uniform
         # distribution and with values from the interval [0,1]
@@ -282,7 +274,7 @@ class OutputLayer:
 
         # composition with the single OutputUnit class
         self.output_units = np.array([OutputUnit(activation_function, self.weights_matrix[i, :],
-            self.bias_array[i], self.eta, self.alpha) for i in range(self.number_units)])
+            self.bias_array[i], self.eta, self.alpha, self.lamb) for i in range(self.number_units)])
 
         # initializing the output values for every unit of the hidden layer
         self.layer_outputs = np.zeros(self.number_units)
@@ -345,12 +337,17 @@ class HiddenLayer:
 
     def __init__(self, activation_function : Callable[[float], float],
                 number_units : int, inputs : np.ndarray,
-                eta : float, alpha=None):
+                eta : float, alpha=0., lamb=0.):
 
         """ Defining the constructor
 
         Attributes
         ----------
+        activation_function : function
+            Activation function to be applied to the net of
+            the unit, so it is a one-variable function
+            defined outside the network.
+        
         number_units : int
             Number of single units in the hidden layer.
 
@@ -361,31 +358,17 @@ class HiddenLayer:
         eta : float
             Learning rate for the alghoritm speed control.
 
-        alpha : NoneType or float
+        alpha : float
             Coefficient for momentum implementation, with value None
             if not implemented or a generic numbers pass from user.
-
-        weights_matrix : np.ndarray
-            Matrix (number of units in the hidden layer x fan in) with the weights,
-            connections of every unit of the hidden layer to those of the first inner layer
-            of the network.
-
-        bias_array : np.ndarray
-            Array with bias values for every unit of the hidden layer.
-
-        hidden_units : list
-            List of Hidden Units that create our hidden layer.
-
-        layer_outputs : np.ndarray
-            Array with the computed outputs of every unit in the hidden layer.
-
-        layer_delta : np.ndarray
-            Array with delta values computed for every unit in the hidden layer.
         """
+
+        # definition of attributes using contructor's arguments
         self.number_units = number_units
         self.inputs = inputs
         self.eta = eta
         self.alpha = alpha
+        self.lamb = lamb
 
         # initializing the weights_matrix with random values chosen from a uniform
         # distribution and with values from the symmetric interval centered in 0 and
@@ -398,7 +381,7 @@ class HiddenLayer:
 
         # composition with the single HiddenUnit class
         self.hidden_units = np.array([HiddenUnit(activation_function, self.weights_matrix[i, :],
-            self.bias_array[i], self.eta, self.alpha) for i in range(self.number_units)])
+            self.bias_array[i], self.eta, self.alpha, self.lamb) for i in range(self.number_units)])
 
         # initializing the output values for every unit of the hidden layer
         self.layer_outputs = np.zeros(self.number_units)
