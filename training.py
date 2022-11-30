@@ -1,5 +1,5 @@
 import numpy as np
-from topologyNN_1 import OutputUnit, HiddenUnit, OutputLayer, HiddenLayer
+from topologyNN import OutputUnit, HiddenUnit, OutputLayer, HiddenLayer
 
 import math
 
