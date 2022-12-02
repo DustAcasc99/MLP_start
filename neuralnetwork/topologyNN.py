@@ -438,7 +438,7 @@ class HiddenLayer:
         # computes the delta for every unit in the layer at hand and updates the weights
         for i in range(self.number_units):
             self.layer_delta[i] =  self.hidden_units[i].backprop_unit(delta_next, 
-                                    weights_matrix_next[i, :], minibatch_size)
+                                    weights_matrix_next[: , i], minibatch_size)
             self.weights_matrix[i, :] = self.hidden_units[i].weights_array
 
         return self.layer_delta
