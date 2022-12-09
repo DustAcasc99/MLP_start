@@ -208,6 +208,8 @@ def train(data_train : np.ndarray, layers_list : list, num_inputs : int, minibat
         # computing the training error over an epoch
         epoch_error += pattern_error
 
+    epoch_error = epoch_error/len(data_train[:, 0])
+
     return layers_list, epoch_error
 
 
@@ -342,9 +344,9 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
 
     if train_ == True:
         # coming back of 20 epochs and return True
-        epochs_error_train[-1:-5] = []
-        epochs_error_val[-1:-5] = []
-        layers_model[-1:-5] = []
+        epochs_error_train[-1:-20] = []
+        epochs_error_val[-1:-20] = []
+        layers_model[-1:-20] = []
 
         return True, epochs_error_train, epochs_error_val, layers_model
 
@@ -389,13 +391,14 @@ def performing_tv(layers_range : np.ndarray, units_range : np.ndarray, eta_range
     # initialize lists that will be useful in the next steps
     mean_val_error = []
     storing_params = []
-    epochs_error_train = [] # list to store the training error over the epochs
-    epochs_error_val = [] # list to store the validation error over the epochs
-    layers_model = [] # list to store the model (the trained neural network)
 
     # looping over every hyperparameter and every fold 
     for params in search_array:
         for index_fold in range(len(folds_data)):
+
+            epochs_error_train = [] # list to store the training error over the epochs
+            epochs_error_val = [] # list to store the validation error over the epochs
+            layers_model = [] # list to store the model (the trained neural network)
 
             # initializing the network (it can be done every time we do model selection with a 
             # different fold -> in this way we can initialize the weights matrix every time)
@@ -407,8 +410,10 @@ def performing_tv(layers_range : np.ndarray, units_range : np.ndarray, eta_range
             # data array for the validation phase
             data_val = folds_data[index_fold]
             # data array for the training phase
-            data_train_list = folds_data
-            del data_train_list[index_fold]
+            data_train_list = []
+            for i in range(len(folds_data)):
+                if i != index_fold:
+                    data_train_list += [folds_data[i]]
             data_train = data_train_list[0]
             for i in range(len(data_train_list)):
                 if i != 0:
@@ -419,8 +424,8 @@ def performing_tv(layers_range : np.ndarray, units_range : np.ndarray, eta_range
             condition = False
             counter = 0
             epochs = 20
-            max_epochs = 300
-
+            max_epochs = 200
+            
             while (condition != True and counter <= max_epochs):
 
                 # update the counter
@@ -438,7 +443,7 @@ def performing_tv(layers_range : np.ndarray, units_range : np.ndarray, eta_range
                 # estimating the empirical error using the validation set
                 epoch_error_val = 0
                 for i in range(len(data_val[:, 0])):
-                    epoch_error_val += (1/len(data_val[:,0]))*sum((feedforward_network(layers_list, data_val[i, :num_inputs]) - data_val[i,num_inputs:])**2)
+                    epoch_error_val += (1 / len(data_val[:,0]))*sum((feedforward_network(layers_list, data_val[i, :num_inputs]) - data_val[i,num_inputs:])**2)
                 epochs_error_val += [epoch_error_val]
 
                 if counter >= epochs:
