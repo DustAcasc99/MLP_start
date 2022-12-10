@@ -41,5 +41,7 @@ for i in range(len(folds_data)):
     print(folds_data[i])
 """
 
-lista = performing_tv([3, 4], [5, 3, 2], [0.15, 0.3], [0.5, 0.7], [0.001, 0.01],
-                      2, tvs_array_load, 4, 10, 9, linear)
+lista = performing_tv(layers_range=[2, 3], units_range=[3, 5, 8], eta_range=[0.01, 0.05],
+                        alpha_range=[0.4, 0.6], lambda_range=[0.001, 0.01],
+                        num_targets=2, tvs_array=tvs_array_load, k=4, minibatch_size=50, 
+                        num_inputs=9, activation_output=linear)

@@ -313,46 +313,120 @@ def split_tvs_kfCV(tvs_array : np.ndarray, k : int) -> list:
  
 
 def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
-                      layers_model : list):
+                      layers_model : list, stop_class : str):
     """ Function to define when to stop in the training and validation phases.
-    """
-    # first consider early stopping: if the validation error 
-    # continues to increase w.r.t. the previous 20 epochs come back of 20 epochs
-    epochs = 20
-    counter = 0
-    for i in range(epochs):
-        if i != epochs-1:
-            if epochs_error_val[-i-1] > epochs_error_val[-i-2]:
-               counter += 1
-    if counter == epochs-1:
-        val_ = True
-    else:
-        val_ = False
+    
+    Arguments
+    ----------
+    epochs_error_train : list
+        List of errors over training set for each epoch.
 
-    # checking if the learning curve for the training was at an asymptote
-    # 20 epochs before the current one
-    train_ = False
-    if val_ == True:
+    epochs_error_val : list
+        List of errors over validation set for each epoch.
+
+    layers_model : list
+        List containing trained layers (istances of classes HiddenLayer
+        and OutputLayer with fixed weights).
+
+    stop_class : str
+        Select a particular algorithm for ealry stopping implementation
+        and there are three possible choices:
+        UP ............ Stop after a deafult number of validation error
+                        increasing epochs.
+        GL ............ Stop as soon the generalization loss exceeds a
+                        certain threshold.
+        PQ ............ Stop as soon the ratio between generalization loss 
+                        and progress exceeds a certain threshold.
+    """
+
+    if stop_class not in ['UP', 'GL', 'PQ']:
+        raise ValueError('Unknown stopping algorithm')
+
+    if stop_class == 'UP':
+        # first consider early stopping: if the validation error 
+        # continues to increase w.r.t. the previous 20 epochs come back of 20 epochs
+        epochs = 20
+        counter = 0
+        for i in range(epochs):
+            if i != epochs-1:
+                if epochs_error_val[-i-1] > epochs_error_val[-i-2]:
+                    counter += 1
+        if counter == epochs-1:
+            val_ = True
+        else:
+            val_ = False
+
+        # checking if the learning curve for the training was at an asymptote
+        # 20 epochs before the current one
+        train_ = False
+        if val_ == True:
             counter = 0
             for i in range(epochs):
                 if epochs_error_train[-i-1] >= epochs_error_train[-i-2] - (10**(-3))*epochs_error_train[-i-2]:
-                    counter += 1
+                        counter += 1
             if counter == epochs-1:
                 train_ = True
             else:
                 train_ = False
 
-    if train_ == True:
-        # coming back of 20 epochs and return True
-        epochs_error_train[-1:-20] = []
-        epochs_error_val[-1:-20] = []
-        layers_model[-1:-20] = []
+        if train_ == True:
+            # coming back of 20 epochs and return True
+            epochs_error_train[-1:-20] = []
+            epochs_error_val[-1:-20] = []
+            layers_model[-1:-20] = []
 
-        return True, epochs_error_train, epochs_error_val, layers_model
+            return True, epochs_error_train, epochs_error_val, layers_model
 
-    else:
-        return False, epochs_error_train, epochs_error_val, layers_model
+        else:
+            return False, epochs_error_train, epochs_error_val, layers_model
 
+    if stop_class == 'GL':
+
+        # threshold for generalization loss (percentage)
+        # and optimal validation error up to now
+        threshold = 0.5
+        optimal = min(epochs_error_val[19:])
+        min_index = epochs_error_val.index(optimal)
+
+        # generalization loss
+        gen_loss = (epochs_error_val[-1] / optimal) - 1
+
+        # condition check
+        if gen_loss > threshold:
+            epochs_error_train = epochs_error_train[:min_index+1]
+            epochs_error_val = epochs_error_val[:min_index+1]
+            layers_model =  layers_model[:min_index+1]
+            return True, epochs_error_train, epochs_error_val, layers_model
+        else:
+            return False, epochs_error_train, epochs_error_val, layers_model
+
+    if stop_class == 'PQ':
+
+        # threshold for the loss progress ratio (percentage)
+        # and optimal validation error up to now
+        threshold = 0.5
+        optimal = min(epochs_error_val[19:])
+        min_index = epochs_error_val.index(optimal)
+
+        # generalization loss
+        gen_loss = (epochs_error_val[-1] / optimal) - 1
+
+        # progress up to now
+        min_train = min(epochs_error_train[-20:])
+        sum_train = sum(epochs_error_train[-20:])
+        progress = (sum_train / 20 * min_train) - 1
+
+        # loss progress ratio
+        ratio = 10 * gen_loss / progress
+
+        # condition check
+        if ratio > threshold:
+            epochs_error_train = epochs_error_train[:min_index+1]
+            epochs_error_val = epochs_error_val[:min_index+1]
+            layers_model =  layers_model[:min_index+1]
+            return True, epochs_error_train, epochs_error_val, layers_model
+        else:
+            return False, epochs_error_train, epochs_error_val, layers_model
 
 # performing training and validation ----------------------------
 
@@ -396,6 +470,8 @@ def performing_tv(layers_range : np.ndarray, units_range : np.ndarray, eta_range
     for params in search_array:
         for index_fold in range(len(folds_data)):
 
+            print(f'Parameters {params}, fold {index_fold}')
+
             epochs_error_train = [] # list to store the training error over the epochs
             epochs_error_val = [] # list to store the validation error over the epochs
             layers_model = [] # list to store the model (the trained neural network)
@@ -424,7 +500,7 @@ def performing_tv(layers_range : np.ndarray, units_range : np.ndarray, eta_range
             condition = False
             counter = 0
             epochs = 20
-            max_epochs = 200
+            max_epochs = 1000
             
             while (condition != True and counter <= max_epochs):
 
@@ -448,10 +524,10 @@ def performing_tv(layers_range : np.ndarray, units_range : np.ndarray, eta_range
 
                 if counter >= epochs:
                    condition, epochs_error_train, epochs_error_val, layers_model = stopping_criteria(
-                                           epochs_error_train, epochs_error_val, layers_model)
+                                           epochs_error_train, epochs_error_val, layers_model, 'PQ')
 
                 # printing out training and validation errors over the epochs
-                print(epochs_error_train[-1], epochs_error_val[-1])
+                print(f'train {epochs_error_train[-1]}, val {epochs_error_val[-1]}')
 
             # plotting the learning curve
             plt.plot(range(len(epochs_error_train)), epochs_error_train, marker = "o", color = 'blue')
