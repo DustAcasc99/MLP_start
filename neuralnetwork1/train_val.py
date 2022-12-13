@@ -8,6 +8,7 @@ from itertools import product # for the grid and random search
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+from typing import Tuple
 
 # import files
 from topologyNN import OutputLayer, HiddenLayer
@@ -313,7 +314,8 @@ def split_tvs_kfCV(tvs_array : np.ndarray, k : int) -> list:
  
 
 def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
-                      layers_model : list, stop_class : str):
+                      layers_model : list, stop_class : str,
+                      stop_param = 1) -> Tuple[bool, list, list, list]:
     """ Function to define when to stop in the training and validation phases.
     
     Arguments
@@ -339,10 +341,10 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
                         and progress exceeds a certain threshold.
     """
 
-    if stop_class not in ['UP', 'GL', 'PQ']:
+    if stop_class not in ['ST', 'UP', 'GL', 'PQ']:
         raise ValueError('Unknown stopping algorithm')
 
-    if stop_class == 'UP':
+    if stop_class == 'ST':
         # first consider early stopping: if the validation error 
         # continues to increase w.r.t. the previous 20 epochs come back of 20 epochs
         epochs = 20
@@ -380,16 +382,48 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
         else:
             return False, epochs_error_train, epochs_error_val, layers_model
 
+    if stop_class == 'UP':
+
+        # number of strips and their length
+        strips = stop_param
+        k = 5
+
+        # checking if epochs are enought
+        if len(epochs_error_val) > k * strips:
+
+            # initialize a counter for stop check
+            counter = 0
+
+            # optimal validation error up to now
+            optimal = min(epochs_error_val)
+            min_index = epochs_error_val.index(optimal)
+
+            # count how mant time 
+            for index in range(strips):
+                if epochs_error_val[-1-index*k] > epochs_error_val[-1-(index+1)*k]:
+                    counter += 1
+                    print(counter)
+            if counter == strips:
+                epochs_error_train = epochs_error_train[:min_index+1]
+                epochs_error_val = epochs_error_val[:min_index+1]
+                layers_model =  layers_model[:min_index+1]
+                return True, epochs_error_train, epochs_error_val, layers_model
+            else:
+                return False, epochs_error_train, epochs_error_val, layers_model
+        else:
+            return False, epochs_error_train, epochs_error_val, layers_model
+
     if stop_class == 'GL':
 
         # threshold for generalization loss (percentage)
         # and optimal validation error up to now
-        threshold = 0.5
-        optimal = min(epochs_error_val[19:])
+        threshold = stop_param
+        optimal = min(epochs_error_val)
         min_index = epochs_error_val.index(optimal)
 
         # generalization loss
-        gen_loss = (epochs_error_val[-1] / optimal) - 1
+        gen_loss = 100 * ((epochs_error_val[-1] / optimal) - 1)
+        print(f'Loss: {gen_loss}')
 
         # condition check
         if gen_loss > threshold:
@@ -404,20 +438,21 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
 
         # threshold for the loss progress ratio (percentage)
         # and optimal validation error up to now
-        threshold = 0.5
-        optimal = min(epochs_error_val[19:])
+        threshold = stop_param
+        optimal = min(epochs_error_val)
         min_index = epochs_error_val.index(optimal)
 
         # generalization loss
-        gen_loss = (epochs_error_val[-1] / optimal) - 1
+        gen_loss = 100 * ((epochs_error_val[-1] / optimal) - 1)
 
         # progress up to now
         min_train = min(epochs_error_train[-20:])
         sum_train = sum(epochs_error_train[-20:])
-        progress = (sum_train / 20 * min_train) - 1
+        progress = 1000 * ((sum_train / 20 * min_train) - 1)
 
         # loss progress ratio
-        ratio = 10 * gen_loss / progress
+        ratio = gen_loss / progress
+        print(f'Ratio: {ratio}')
 
         # condition check
         if ratio > threshold:
@@ -451,7 +486,8 @@ def search_space_dict(layers_range : np.ndarray, units_range : np.ndarray,
 def performing_tv(layers_range : np.ndarray, units_range : np.ndarray, eta_range : np.ndarray, 
                   alpha_range : np.ndarray, lambda_range : np.ndarray, num_targets : int,
                   tvs_array : np.ndarray, k : int, minibatch_size : int, num_inputs : int,
-                  activation_output : Callable[[float], float]) -> list:
+                  activation_output : Callable[[float], float],
+                  stop_class : str, stop_param : float) -> list:
     """ Function for performing training and validation phases.
     """
     # ---- we can also try a number of random starting configurations 5-10
@@ -524,7 +560,8 @@ def performing_tv(layers_range : np.ndarray, units_range : np.ndarray, eta_range
 
                 if counter >= epochs:
                    condition, epochs_error_train, epochs_error_val, layers_model = stopping_criteria(
-                                           epochs_error_train, epochs_error_val, layers_model, 'PQ')
+                                           epochs_error_train, epochs_error_val, layers_model,
+                                           stop_class, stop_param)
 
                 # printing out training and validation errors over the epochs
                 print(f'train {epochs_error_train[-1]}, val {epochs_error_val[-1]}')
