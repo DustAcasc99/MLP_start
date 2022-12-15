@@ -95,7 +95,7 @@ def network_initialization(num_layers : int, units_per_layer : list, num_inputs 
     return layers_list # list of initialized hiddens + output layer
 
 
-def feedforward_network(layers_list : list, to_pass : np.ndarray) -> np.ndarray:
+def feedforward_network(layers_list : list, to_pass : np.ndarray, task : str, thr : float) -> np.ndarray:
     """Function for the feedforward propagation of all the
     hidden layers and the output layer for a single pattern.
 
@@ -107,6 +107,13 @@ def feedforward_network(layers_list : list, to_pass : np.ndarray) -> np.ndarray:
 
         to_pass : np.ndarray
             inputs row from the Dataset.
+            
+        task : str
+            specify if the task is a regression or a binary classification.
+            
+        thr : str
+            used in the binary classification's output unit to assign 1/0 as label:
+            when output >= thr, 1 is assigned, 0 otherwise.
 
     Returns
     ----------
@@ -120,11 +127,20 @@ def feedforward_network(layers_list : list, to_pass : np.ndarray) -> np.ndarray:
         # computing the feedforward propagation of the current layer and saving its
         # output in order to update the inputs of the next layer of the network
         to_pass = layers_list[layer_index].feedforward_layer()
+    
+    if task == 'binary_classification':
+        if to_pass[0] >= thr:
+            label = 1
+        else:
+            label = 0
+            
+        return to_pass, label   #return the array output + assigned label
+    
+    if task == 'regression':
+        return to_pass, 0  # outputs of the output layer + 0 for consistency in the cross-val function
 
-    return to_pass # outputs of the output layer
 
-
-def backprop_network(layers_list : list, target_layer : np.ndarray, minibatch_size : int) -> float:
+def backprop_network(layers_list : list, target_layer : np.ndarray, minibatch_size : int, task : str, thr : float) -> float:
     """ Function for the backword propagation of the output layer
     and all the hidden layers for a single pattern.
 
@@ -141,14 +157,24 @@ def backprop_network(layers_list : list, target_layer : np.ndarray, minibatch_si
         minibatch_size : int
             mini-batch's size considered for the weights
             update.
+            
+        task : str
+            specify if the task is a regression or a binary classification.
+            
+        thr : str
+            used in the binary classification's output unit to assign 1/0 as label:
+            when output >= thr, 1 is assigned, 0 otherwise.
 
     Returns
     ----------
         error : float
             the error computed as the average of (target-output)**2.
     """
+    
+    
     # computing the error for the output layer (total error of the network on a TR pattern)
     pattern_error = 0.5 * sum((target_layer - layers_list[-1].layer_outputs)**2)
+    
 
     # computing the backpropagation for the output layer
     delta = layers_list[-1].backprop_layer(target_layer, minibatch_size)
@@ -162,12 +188,27 @@ def backprop_network(layers_list : list, target_layer : np.ndarray, minibatch_si
         # computing the backpropagation and updating the delta for the inner hidden layer
         # of the network for which the backprop will be computed
         delta = layers_list[layer_index].backprop_layer(delta, weights_next, minibatch_size)
+        
+    
+    if task == 'binary_classification':
+        #evaluate if there is a mathch between the predicted label and the actual label of the pattern
+        if layers_list[-1].layer_outputs[0] >= thr:
+            label = 1
+        else:
+            label = 0
+            
+        if label == target_layer[0]:
+            acc_increase = 1
+        else:
+            acc_increase = 0
+            
+        return pattern_error, acc_increase #return the error and the matching result
 
-    return pattern_error
+    if task == 'regression':
+        return pattern_error, 0 #return the error and a 0 for consistency with variable assignment in train function
 
 
-
-def train(data_train : np.ndarray, layers_list : list, num_inputs : int, minibatch_size : int):
+def train(data_train : np.ndarray, layers_list : list, num_inputs : int, minibatch_size : int, task : str, thr : float):
     """ Function to train the network for a single epoch.
 
     Parameters
@@ -184,6 +225,14 @@ def train(data_train : np.ndarray, layers_list : list, num_inputs : int, minibat
 
         layers_list : list
             list of initialized hidden layers + output layer.
+            
+        task : str
+            specify if the task is a regression or a binary classification.
+            
+        thr : str
+            used in the binary classification's output unit to assign 1/0 as label:
+            when output >= thr, 1 is assigned, 0 otherwise.
+            
 
     Returns
     ----------
@@ -196,22 +245,34 @@ def train(data_train : np.ndarray, layers_list : list, num_inputs : int, minibat
     # reset mini-batch at each epoch
     reset_mini_batch(layers_list)
     epoch_error = 0
+    accuracy = 0
 
     # performing the training for one epoch
     for index in range(len(data_train[:, 0])):
         # inputs to be passed
         to_pass = data_train[index, :num_inputs]
         # computing the feedforward propagation for every layer in the network
-        output = feedforward_network(layers_list, to_pass)
+        output = feedforward_network(layers_list, to_pass, task = task, thr = thr)
         # computing the backpropagation for every layer in the network
-        pattern_error = backprop_network(layers_list, data_train[index, num_inputs:], minibatch_size)
+        pattern_error, acc_increase = backprop_network(layers_list, data_train[index, num_inputs:], minibatch_size, task = task, thr = thr)
 
         # computing the training error over an epoch
         epoch_error += pattern_error
+        
+        if task == 'binary_classification':
+            accuracy += acc_increase
 
-    epoch_error = epoch_error/len(data_train[:, 0])
-
-    return layers_list, epoch_error
+    if task == 'regression':
+        epoch_error = epoch_error/len(data_train[:, 0])
+    
+        return layers_list, epoch_error, 0     #return model, epoch_error and 0 for consistency with cross-val function
+    
+    if task == 'binary_classification':
+        
+        epoch_error = epoch_error/len(data_train[:, 0])
+        accuracy = accuracy/len(data_train[:, 0])
+    
+        return layers_list, epoch_error, accuracy
 
 
 # -------
@@ -480,6 +541,7 @@ def search_space_dict(layers_range : np.ndarray, units_range : np.ndarray,
 
     search_array = gridsearch(search_dict, num_targets)
     return search_array
+
 
 
 # 2- performing model selection
