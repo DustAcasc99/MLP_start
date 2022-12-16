@@ -16,8 +16,8 @@ class Unit:
     """
 
     def __init__(self, activation_function : Callable[[float], float],
-                weights_array : np.ndarray, bias : float, eta : float, 
-                alpha = 0., lamb = 0.):
+                weights_array : np.ndarray, bias : float, seed : int, eta_0 : float, 
+                alpha = 0., lamb = 0., lamb0 = 0.):
 
         """ Defining the constructor.
 
@@ -35,8 +35,11 @@ class Unit:
         bias : float
             Threshold value of the output unit.
 
-        eta : float
-            Learning rate for the alghoritm speed control.
+        seed : int
+            seed for the random generation of the weights.
+
+        eta_0 : float
+            Maximum learning rate for the alghoritm speed control.
 
         alpha : float
             Coefficient for momentum implementation, with value None
@@ -45,19 +48,28 @@ class Unit:
         lamb : float
             Lambda in the penalty term for regularization (word lambda
             is not used because it is a reserved word in Python).
+
+        lamb0 : float
+            The same as for lamb but for the bias term.
         """
         # definition of attributes using contructor's arguments
         self.activation_function = activation_function
         self.weights_array = weights_array
         self.bias = bias
-        self.eta = eta
+        self.seed = seed
+        self.eta_0 = eta_0
         self.alpha = alpha
         self.lamb = lamb
+        self.lamb0 = lamb0
 
         # definition of attributes useful for class methods
+        self.eta = float
+        self.tau = 250
         self.counter = 0
         self.gradients_sum = 0.
         self.old_weight_change = 0.
+        self.gradients_sum_bias = 0.
+        self.old_bias_change = 0.
         self.inputs = np.ndarray
         self.output = np.ndarray
         self.net = float
@@ -97,10 +109,10 @@ class OutputUnit(Unit):
     """
 
     def __init__(self, activation_function : Callable[[float], float], weights_array : np.ndarray,
-        bias : float, eta : float, alpha = 0., lamb = 0.):
+        bias : float, seed : int, eta_0 : float, alpha = 0., lamb = 0., lamb0 = 0.):
 
         # calls the contructor of the Unit class (the Parent class)
-        super().__init__(activation_function, weights_array, bias, eta, alpha, lamb)
+        super().__init__(activation_function, weights_array, bias, seed, eta_0, alpha, lamb, lamb0)
 
 
     def backprop_unit(self, target: float, minibatch_size = 1) -> float:
@@ -130,7 +142,15 @@ class OutputUnit(Unit):
 
         # summing of gradients and counter update
         self.gradients_sum = self.gradients_sum + delta * self.inputs
-        self.counter = self.counter + 1
+        self.gradients_sum_bias = self.gradients_sum_bias + delta * self.bias
+        self.counter += 1
+
+        # implementing the variable learning rate at the first order
+        if self.counter < self.tau:
+            self.eta = (1 - self.counter / self.tau) * self.eta_0 + \
+                       (self.counter / self.tau) * 0.01 * self.eta_0
+        else:
+            self.eta = 0.01 * self.eta_0
 
         # updating the weights (do it only at the end of minibatch)
         if (self.counter == minibatch_size):
@@ -138,13 +158,18 @@ class OutputUnit(Unit):
                                     (self.eta / minibatch_size) * self.gradients_sum + \
                                     self.alpha * self.old_weight_change - \
                                     self.lamb * self.weights_array
+            self.bias = self.bias + (self.eta / minibatch_size) * self.gradients_sum_bias + \
+                                    self.alpha * self.old_bias_change - \
+                                    self.lamb0 * self.bias
             
             # updating the momentum
             self.old_weight_change = (self.eta / minibatch_size) * self.gradients_sum
+            self.old_bias_change = (self.eta / minibatch_size) * self.gradients_sum_bias
 
-            # resetting quantities for next minibatch (or sample/epoch)
+            # resetting quantities for next minibatch
             self.counter = 0
             self.gradients_sum = 0.
+            self.gradients_sum_bias = 0.
 
         # returns the error signal for this output unit that will be used
         # to compute the backpropagation for the first inner layer of the network
@@ -157,15 +182,15 @@ class HiddenUnit(Unit):
     """ Defining the class for a hidden unit.
     """
 
-    def __init__(self, activation_function : Callable[[float], float], weights_array: np.ndarray,
-        bias: float, eta: float, alpha = 0., lamb = 0.):
+    def __init__(self, activation_function : Callable[[float], float], weights_array : np.ndarray,
+        bias : float, seed : int, eta_0 : float, alpha = 0., lamb = 0., lamb0 = 0.):
 
         # calls the contructor of the Unit class
-        super().__init__(activation_function, weights_array, bias, eta, alpha, lamb)
-
+        super().__init__(activation_function, weights_array, bias, seed, eta_0, alpha, lamb, lamb0)
+ 
 
     def backprop_unit(self, delta_next : np.ndarray, weights_array_next : np.ndarray,
-                        minibatch_size = 1) -> float:
+                      bias_next : float, minibatch_size = 1) -> float:
 
         """ Method for the backpropagation of the output unit.
 
@@ -179,6 +204,9 @@ class HiddenUnit(Unit):
         weights_array_next : arraylike of shape (n_components)
             Array with the weights, connections with the units of the first outer layer.
 
+        bias_next : float
+            Value of the bias with the units of the first outer layer.
+
         minibatch_size : int
             Number of samples in batch or mini-batch: it tells after how many calls of
             backprop_unit method the units weights must be updated.
@@ -191,12 +219,23 @@ class HiddenUnit(Unit):
             Small delta for the unit, the error signal for the hidden unit.
         """
         # computes the error signal for the hidden unit
-        delta = ((np.inner(delta_next, weights_array_next)) *
+        delta_weights = ((np.inner(delta_next, weights_array_next)) *
                   misc.derivative(self.activation_function, self.net))
+        delta_bias = ((np.inner(delta_next, bias_next)) *
+                  misc.derivative(self.activation_function, self.net))
+        delta = delta_weights + delta_bias
 
         # sum of gradients and counter update
-        self.gradients_sum = self.gradients_sum + delta * self.inputs
-        self.counter = self.counter + 1
+        self.gradients_sum = self.gradients_sum + delta_weights * self.inputs
+        self.gradients_sum_bias = self.gradients_sum_bias + delta_bias * self.bias
+        self.counter += 1
+
+        # implementing the variable learning rate at the first order
+        if self.counter < self.tau:
+            self.eta = (1 - self.counter / self.tau) * self.eta_0 + \
+                       (self.counter / self.tau) * 0.01 * self.eta_0
+        else:
+            self.eta = 0.01 * self.eta_0
 
         # updates the weights (do it only at the end of minibatch)
         if (self.counter == minibatch_size):
@@ -204,13 +243,18 @@ class HiddenUnit(Unit):
                                     (self.eta / minibatch_size) * self.gradients_sum + \
                                     self.alpha * self.old_weight_change - \
                                     self.lamb * self.weights_array
-            
+            self.bias = self.bias + (self.eta / minibatch_size) * self.gradients_sum_bias + \
+                                    self.alpha * self.old_bias_change - \
+                                    self.lamb0 * self.bias
+
             # update the momentum
             self.old_weight_change = (self.eta / minibatch_size) * self.gradients_sum
+            self.old_bias_change = (self.eta / minibatch_size) * self.gradients_sum_bias
 
             # reset quantities for next minibatch (or sample/epoch)
             self.counter = 0
             self.gradients_sum = 0.
+            self.gradients_sum_bias = 0.
 
         # returns the error signal for this output unit that will be used
         # to compute the backpropagation for the other hidden units of the network
@@ -226,8 +270,8 @@ class OutputLayer:
     """
 
     def __init__(self, activation_function : Callable[[float], float],
-                number_units : int, inputs : np.ndarray, 
-                eta: float, alpha = 0., lamb = 0.):
+                number_units : int, inputs : np.ndarray, seed : int,
+                eta_0 : float, alpha = 0., lamb = 0., lamb0 = 0.):
 
         """ Defining the constructor
 
@@ -245,8 +289,11 @@ class OutputLayer:
             Array with the inputs coming from the units of the first inner layer
             to every unit of the output layer.
 
-        eta : float
-            Learning rate for the alghoritm speed control.
+        seed : int
+            seed for the random generation of the weights.
+
+        eta_0 : float
+            Maximum learning rate for the alghoritm speed control.
 
         alpha : NoneType or float
             Coefficient for momentum implementation, with value None
@@ -255,18 +302,22 @@ class OutputLayer:
         lamb : float
             Lambda in the penalty term for regularization (word lambda
             is not used because it is a reserved word in Python).
-        """
 
+        lamb0 : float
+            The same as for lamb but for the bias term.
+        """
         # definition of attributes using contructor's arguments
         self.number_units = number_units
         self.inputs = inputs
-        self.eta = eta
+        self.seed = seed
+        self.eta_0 = eta_0
         self.alpha = alpha
         self.lamb = lamb
+        self.lamb0 = lamb0
 
         # initializing the weights_matrix with random values chosen from a uniform
         # distribution and with values from the interval [-0.7,0.7]
-        self.weights_matrix = np.random.uniform(low = -0.7, high = 0.7,
+        self.weights_matrix = np.random.RandomState(seed).uniform(low = -0.7, high = 0.7,
             size = (self.number_units, len(self.inputs)))
 
         # initializing the values of the bias for every unit of the output layer
@@ -274,7 +325,7 @@ class OutputLayer:
 
         # composition with the single OutputUnit class
         self.output_units = np.array([OutputUnit(activation_function, self.weights_matrix[i, :], self.bias_array[i],
-                            self.eta, self.alpha, self.lamb) for i in range(self.number_units)])
+                            self.eta_0, self.alpha, self.lamb, self.lamb0) for i in range(self.number_units)])
 
         # initializing the output values for every unit of the output layer
         self.layer_outputs = np.zeros(self.number_units)
@@ -325,6 +376,7 @@ class OutputLayer:
         for i in range(self.number_units):
             self.layer_delta[i] =  self.output_units[i].backprop_unit(target_layer[i], minibatch_size)
             self.weights_matrix[i, :] = self.output_units[i].weights_array
+            self.bias_array[i] = self.output_units[i].bias
 
         return self.layer_delta
 
@@ -336,8 +388,8 @@ class HiddenLayer:
     """
 
     def __init__(self, activation_function : Callable[[float], float],
-                number_units : int, inputs : np.ndarray,
-                eta : float, alpha = 0., lamb = 0.):
+                number_units : int, inputs : np.ndarray, seed : int,
+                eta_0 : float, alpha = 0., lamb = 0., lamb0 = 0.):
 
         """ Defining the constructor
 
@@ -355,25 +407,37 @@ class HiddenLayer:
             Array with the inputs coming from the units of the first inner layer
             to every unit of the hidden layer at hand.
 
-        eta : float
-            Learning rate for the alghoritm speed control.
+        seed : int
+            seed for the random generation of the weights.
+
+        eta_0 : float
+            Maximum learning rate for the alghoritm speed control.
 
         alpha : float
             Coefficient for momentum implementation, with value None
             if not implemented or a generic numbers pass from user.
+
+        lamb : float
+            Lambda in the penalty term for regularization (word lambda
+            is not used because it is a reserved word in Python).
+
+        lamb0 : float
+            The same as for lamb but for the bias term.
         """
 
         # definition of attributes using contructor's arguments
         self.number_units = number_units
         self.inputs = inputs
-        self.eta = eta
+        self.seed = seed
+        self.eta_0 = eta_0
         self.alpha = alpha
         self.lamb = lamb
+        self.lamb0 = lamb0
 
         # initializing the weights_matrix with random values chosen from a uniform
         # distribution and with values from the symmetric interval centered in 0 and
         # with width = 1/sqrt(fan_in)
-        self.weights_matrix = np.random.uniform(low = - 1/(np.sqrt(len(self.inputs))),
+        self.weights_matrix = np.random.RandomState(seed).uniform(low = - 1/(np.sqrt(len(self.inputs))),
             high = 1/(np.sqrt(len(self.inputs))), size = (self.number_units, len(self.inputs)))
 
         # initializing the values of the bias for every unit of the hidden layer
@@ -381,7 +445,7 @@ class HiddenLayer:
 
         # composition with the single HiddenUnit class
         self.hidden_units = np.array([HiddenUnit(activation_function, self.weights_matrix[i, :],
-            self.bias_array[i], self.eta, self.alpha, self.lamb) for i in range(self.number_units)])
+            self.bias_array[i], self.eta_0, self.alpha, self.lamb, self.lamb0) for i in range(self.number_units)])
 
         # initializing the output values for every unit of the hidden layer
         self.layer_outputs = np.zeros(self.number_units)
@@ -409,7 +473,7 @@ class HiddenLayer:
 
 
     def backprop_layer(self, delta_next : np.ndarray,
-                        weights_matrix_next : np.ndarray,
+                        weights_matrix_next : np.ndarray, bias_array_next : np.ndarray,
                         minibatch_size = 1) -> np.ndarray:
 
         """ Method for the backpropagation of the hidden layer.
@@ -423,6 +487,9 @@ class HiddenLayer:
             Matrix (number of units in the output layer x number of units in the hidden
             layer) with the weights, connections of every unit of the hidden layer to
             those of the first outer layer of the network.
+
+        bias_array_next : np.ndarray
+            Array with bias values with thw units of the first outer layer.
 
         minibatch_size : int
             Number of samples in batch or mini-batch: it tells after how many calls of
@@ -438,7 +505,8 @@ class HiddenLayer:
         # computes the delta for every unit in the layer at hand and updates the weights
         for i in range(self.number_units):
             self.layer_delta[i] =  self.hidden_units[i].backprop_unit(delta_next, 
-                                    weights_matrix_next[:, i], minibatch_size)
+                                    weights_matrix_next[:, i], bias_array_next, minibatch_size)
             self.weights_matrix[i, :] = self.hidden_units[i].weights_array
+            self.bias_array[i] = self.hidden_units[i].bias
 
         return self.layer_delta
