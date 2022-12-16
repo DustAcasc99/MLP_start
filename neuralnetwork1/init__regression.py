@@ -3,45 +3,45 @@
 """
 
 # import packages 
-import math
 import numpy as np
 
 # import files
-from train_val import performing_tv, feedforward_network, network_initialization, backprop_network, train, split_tvs_kfCV
-from topologyNN import HiddenLayer
+from train_val import performing_tv, linear, sigmoid
 
 
 # loading training and validation data in a numpy array skipping the first 7 rows
 tvs_array_load = np.loadtxt('ML-CUP22-TR.csv', skiprows = 6, delimiter = ',',
                              usecols = (1,2,3,4,5,6,7,8,9,10,11))
 
-# defining activation functions
-def linear(x):
-    return x
+# normalizing inputs
+tvs_array_load_mv = np.zeros((len(tvs_array_load[:, 0]), 9))
+mean_array = np.zeros(9)
+standard_deviation_array = np.zeros(9)
+for i in range(9):
+    mean_array[i] = np.average(tvs_array_load[:, i])
+    standard_deviation_array[i] = np.std(tvs_array_load[:, i])
 
+for i in range(len(tvs_array_load[:, 0])):
+    for j in range(9):
+        tvs_array_load_mv[i, j] = (tvs_array_load[i, j] - mean_array[j]) / standard_deviation_array[j]
 
+tvs_array_load_mv = np.column_stack((tvs_array_load_mv, tvs_array_load[:, -2], tvs_array_load[:, -1]))
+
+tvs_array_load_minmax = np.zeros((len(tvs_array_load[:, 0]), 9))
+min_array = np.zeros(9)
+max_array = np.zeros(9)
+for i in range(9):
+    min_array[i] = np.amin(tvs_array_load[:, i])
+    max_array[i] = np.amax(tvs_array_load[:, i])
+
+for i in range(len(tvs_array_load[:, 0])):
+    for j in range(9):
+        tvs_array_load_minmax[i, j] = (tvs_array_load[i, j] - min_array[j]) / (max_array[j] - min_array[j])
+
+tvs_array_load_minmax = np.column_stack((tvs_array_load_minmax, tvs_array_load[:, -2], tvs_array_load[:, -1]))
 # --------------------
-"""
-lista_layers = network_initialization(3, [5,3,2], 9, 0.07, 0.6, 0.0001, linear)
 
-output = feedforward_network(lista_layers, tvs_array_load[0,:9])
-print(output)
-print(lista_layers[1].weights_matrix)
-
-pattern_error = backprop_network(lista_layers, tvs_array_load[0,9:], 1)
-print(pattern_error)
-print(lista_layers[1].weights_matrix)
-
-lista_layers, epoch_error = train(tvs_array_load, lista_layers, 9, 30)
-print(epoch_error)
-
-a = np.array(([1,1,1,1],[2,2,2,2],[3,3,3,3],[4,4,4,4], [5,5,5,5]))
-folds_data = split_tvs_kfCV(a, 3)
-for i in range(len(folds_data)):
-    print(folds_data[i])
-"""
-
-list = performing_tv(layers_range=[2, 3], units_range=[8, 10, 12], eta_range=[0.01, 0.05],
-                        alpha_range=[0.4, 0.6], lambda_range=[0.001, 0.01],
-                        num_targets=2, tvs_array=tvs_array_load, k=4, minibatch_size=50, 
-                        num_inputs=9, activation_output=linear, stop_class='GL', stop_param=3)
+layers_list = performing_tv([2, 3], [8, 10, 12], 9, 2, tvs_array_load_mv, [3, 4, 5], [0.3], [0.5, 0.7, 0.9],
+                            [0.001, 0.01], [0.001, 0.01], 4,
+                            [30, 50, 70], linear, sigmoid,  stop_class = 'GL', stop_param = 3,
+                            task = 'regression', thr = 0)
