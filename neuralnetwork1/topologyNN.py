@@ -325,7 +325,7 @@ class OutputLayer:
 
         # composition with the single OutputUnit class
         self.output_units = np.array([OutputUnit(activation_function, self.weights_matrix[i, :], self.bias_array[i],
-                            self.eta_0, self.alpha, self.lamb, self.lamb0) for i in range(self.number_units)])
+                            self.seed, self.eta_0, self.alpha, self.lamb, self.lamb0) for i in range(self.number_units)])
 
         # initializing the output values for every unit of the output layer
         self.layer_outputs = np.zeros(self.number_units)
@@ -445,7 +445,7 @@ class HiddenLayer:
 
         # composition with the single HiddenUnit class
         self.hidden_units = np.array([HiddenUnit(activation_function, self.weights_matrix[i, :],
-            self.bias_array[i], self.eta_0, self.alpha, self.lamb, self.lamb0) for i in range(self.number_units)])
+            self.bias_array[i], self.seed, self.eta_0, self.alpha, self.lamb, self.lamb0) for i in range(self.number_units)])
 
         # initializing the output values for every unit of the hidden layer
         self.layer_outputs = np.zeros(self.number_units)
