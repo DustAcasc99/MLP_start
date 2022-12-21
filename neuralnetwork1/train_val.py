@@ -789,6 +789,99 @@ def performing_tv(layers_range : np.ndarray, units_range : np.ndarray, num_input
 
     return layers_list # the trained model with optimal hyperparameters
 
+
+def train_test(hyperparams : dict, num_inputs : int, seed : int, activation_output : Callable[[float], float] , activation_hidden : Callable[[float], float], 
+               task : str, thr : 0.5, stop_class : str , stop_param : int , data_train : np.ndarray, data_val : np.ndarray):
+    
+    layers_list = network_initialization(num_layers = hyperparams['layers'], 
+                                         units_per_layer = hyperparams['units'],
+                                         num_inputs = num_inputs, seed = seed,
+                                         eta_0 = hyperparams['eta_0'],
+                                         alpha = hyperparams['alpha'],
+                                         lamb = hyperparams['lamb'],
+                                         lamb0 = hyperparams['lamb0'],
+                                         activation_output = activation_output,
+                                         activation_hidden = activation_hidden)
+    
+    model_layers = []
+    
+    epochs_train_error = []
+    epochs_train_accuracy =   []
+    
+    epochs_error_val = []
+    epochs_accuracy_val = []
+    
+    
+    condition = False
+    counter = 0
+    epochs = 50
+    max_epochs = 1000
+    
+    while (condition != True and counter <= max_epochs):
+
+        # update the counter
+        counter += 1
+        # shuffle training and validation sets for every epoch
+        np.random.shuffle(data_train)
+        np.random.shuffle(data_val)                        
+
+        # perform the training phase and store the model and the epoch's error
+        layers_list, epoch_error, accuracy = train(data_train, layers_list, num_inputs,
+                                         minibatch_size = hyperparams['minibatch_size'],
+                                         task = task, thr = thr)
+        
+        epochs_train_error += [epoch_error]
+        epochs_train_accuracy += [accuracy]
+        model_layers += [layers_list]
+
+        # estimating the empirical error using the validation set over current epoch
+        epoch_error_val = 0
+        epoch_accuracy_val = 0
+        
+        for i in range(len(data_val[:, 0])):
+            output_ = feedforward_network(layers_list, data_val[i, :num_inputs])
+            target_ = data_val[i, num_inputs:]
+                       
+            epoch_error_val += (1 / len(data_val[:,0])) * \
+                sum((feedforward_network(layers_list, data_val[i, :num_inputs]) - data_val[i, num_inputs:])**2)
+                
+            if task == 'binary_classification':
+                label = 1 if output_[0] >= thr else 0
+                epoch_accuracy_val += 1 if label == target_[0] else 0
+                
+        epochs_error_val += [epoch_error_val]
+        epochs_accuracy_val += [epoch_accuracy_val * (1 / len(data_val[:,0])) ]
+                
+        print(f'training error {epochs_train_error[-1]}, test error {epochs_error_val[-1]}')
+        
+        if counter >= epochs:
+            condition, epochs_train_error, epochs_error_val, model_layers = stopping_criteria(
+                                epochs_train_error, epochs_error_val,
+                                model_layers, stop_class, stop_param)
+            
+    # plotting the learning curve for the current fold and the current hyperparameters set
+    plt.plot(range(len(epochs_train_error)), epochs_train_error, marker = ".", color = 'blue')
+    plt.plot(range(len(epochs_error_val)), epochs_error_val, marker = ".", color = 'green')
+    plt.title('Learning curve')
+    plt.xlabel('Epochs')
+    plt.ylabel('Error')
+    plt.legend(['Training Error', 'Test Error'])
+    plt.show()
+    
+    if task == 'binary_classification':
+        # plotting the learning curve accuracy for the current fold and the current hyperparameters set
+        plt.plot(range(len(epochs_train_accuracy)), epochs_train_accuracy, marker = ".", color = 'blue')
+        plt.plot(range(len(epochs_accuracy_val)), epochs_accuracy_val, marker = ".", color = 'green')
+        plt.title('Learning curve - Accuracy')
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
+        plt.legend(['Training Accuracy', 'Test Accuracy'])
+        plt.show()
+        
+    print(epochs_accuracy_val[-1], epochs_error_val[-1])
+    
+    return layers_list, epochs_accuracy_val[-1], epochs_error_val[-1], epochs_train_error[-1], epochs_train_accuracy[-1]
+
 def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inputs : int,
                   num_targets : int, tvts_array : np.ndarray, k_range : np.ndarray, eta_0_range : np.ndarray,
                   alpha_range : np.ndarray, lamb_range : np.ndarray, lamb0_range : np.ndarray,
