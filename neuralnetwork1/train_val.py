@@ -448,7 +448,9 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
     stop_class : str
         Select a particular algorithm for ealry stopping implementation
         and there are three possible choices:
-        UP ............ Stop after a deafult number of validation error
+        ST ............ Stop after a default number of epoch with increasing
+                        validation error.
+        UP ............ Stop after a given number of validation error
                         increasing epochs.
         GL ............ Stop as soon the generalization loss exceeds a
                         certain threshold.
@@ -492,10 +494,10 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
             epochs_error_val[-1:-20] = []
             layers_model[-1:-20] = []
 
-            return True, epochs_error_train, epochs_error_val, layers_model
+            return True, epochs_error_train, epochs_error_val, layers_model[-1]
 
         else:
-            return False, epochs_error_train, epochs_error_val, layers_model
+            return False, epochs_error_train, epochs_error_val, layers_model[-1]
 
     if stop_class == 'UP':
 
@@ -521,7 +523,7 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
             if counter == strips:
                 epochs_error_train = epochs_error_train[:min_index+1]
                 epochs_error_val = epochs_error_val[:min_index+1]
-                layers_model =  layers_model[:min_index+1]
+                layers_model =  layers_model[min_index]
                 return True, epochs_error_train, epochs_error_val, layers_model
             else:
                 return False, epochs_error_train, epochs_error_val, layers_model
@@ -544,7 +546,7 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
         if gen_loss > threshold:
             epochs_error_train = epochs_error_train[:min_index+1]
             epochs_error_val = epochs_error_val[:min_index+1]
-            layers_model =  layers_model[:min_index+1]
+            layers_model =  layers_model[min_index]
             return True, epochs_error_train, epochs_error_val, layers_model
         else:
             return False, epochs_error_train, epochs_error_val, layers_model
@@ -573,7 +575,7 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
         if ratio > threshold:
             epochs_error_train = epochs_error_train[:min_index+1]
             epochs_error_val = epochs_error_val[:min_index+1]
-            layers_model =  layers_model[:min_index+1]
+            layers_model =  layers_model[min_index]
             return True, epochs_error_train, epochs_error_val, layers_model
         else:
             return False, epochs_error_train, epochs_error_val, layers_model
@@ -888,6 +890,68 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
                   configurations : int, minibatch_size_range : int, activation_output : Callable[[float], float],
                   activation_hidden : Callable[[float], float], stop_class : str, stop_param : float,
                   task : str, thr : float) -> list:
+    """ Function to perform a train-validation-test session using a data set divided in a training-validation
+    set and a data set. The first part of original data are used to perform a k-fold corss validation, while
+    the second slice is used as an external hold-out test set. In the function algorithm the process is
+    performed for different hyperparameters, including different initialization (controlled by a seed) and
+    different partition in the k-fold phase (differet number of folds and reshuffle). The different models are
+    selected through a gird search or a random search.
+    Arguments:
+        layers_range : np.ndarray
+            Possible values for the number of layers in the network.
+
+        units_range : np.ndarray
+            Possible values of the number of units in the network layers.
+
+        num_imputs : int
+            Fan_in of the network.
+
+        num_targets : int
+            Fan-out of the network.
+
+        tvts_array : np.ndarray
+            Dataset used for the process.
+
+        k_range : np.ndarray
+            Possible values for the numbers of folds.
+
+        eta_0_range : np.ndarray
+            Possible values for the initial learning rate (change
+            during the learning phase).
+
+        alpha_range : np.ndarray
+            Possible values for the momentum parameter.
+
+        lamb_range : np.ndarray
+            Possible values for the penalty term parameter (for weights)
+
+        lamb0_range : np.ndarray
+            Possible values for the penalty term parameter (for bias)
+
+        configurations : int
+            Number of different model to be analyzed with the rando search.
+
+        minibatch_size_range: np.ndarray
+            Possible values for the minibatch length.
+
+        activation_output : Callable[[float], float]
+            Activation function for the output layer.
+
+        activation_hidden : Callable[[float], float]
+            Activation function for the hidden layers.
+
+        stop_class : str
+            Early stopping algorithm.
+
+        stop_param : float
+            Threshold for the stopping algorithm.
+
+        task : str
+            Task of the process.
+
+        thr : float
+            Threshold for the classification task.
+    """              
 
     # defining/initializing the hyperparameter space where to search
     grid_search_array, random_search_array = search_space_dict(num_targets, configurations,
@@ -902,7 +966,10 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
     tvs_array = tvts_array[:int(0.75*len(tvts_array))]
 
     trained_optimal_models = [] # list to store the trained optimal model for each splitting
+
     test_error_optimal_models = [] # list to store test errors of optimal models
+
+    optimal_model_params = [] # list to store optimal set of parameters used for test evaluation
 
     # iterate 2 times for weights initializations changing the seed
     for seed in range(2):  
@@ -913,22 +980,22 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
             # shuffling and splitting the original dataset
             folds_data = split_tvs_kfCV(tvs_array, k)
 
+            mean_val_error = []  # list to store the mean of the empirical errors using the validation
+                                 # set computed over the folds for every splitting cycle
+
+            storing_hyperparams = [] # list to store the model obtained at each epoch, used to
+                                     # implement early stopping
+
             # looping over every hyperparameter (in grid_search_array) and every fold 
             for hyperparams in grid_search_array:
 
                 folds_val_error = [] # list to store the validation errors for every model obtained
                                      # with every fold
 
-                mean_val_error = []  # list to store the mean of the empirical errors using the validation
-                                     # set computed over the folds for every splitting cycle
-
-                storing_hyperparams = [] # list to store the model obtained at each epoch, used to
-                                         # implement early stopping
-
                 for index_fold in range(len(folds_data)):
 
                     epochs_train_error = [] # list to store training errors that has to be empty every time we
-                                         # do it on a different fold
+                                            # do it on a different fold
 
                     epochs_val_error = []   # list to store validation errors
 
@@ -1028,8 +1095,11 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
                 mean_val_error += [(1/k)*sum(folds_val_error)]
 
                 # adding the number of fold and seed to hyperparameters
-                hyper = hyperparams
-                hyper['folds'] = k
+                hyper = dict()
+                for key, value in hyperparams.items():
+                    hyper[key] = value
+
+                hyper['k'] = k
                 hyper['seed'] = seed
 
                 # storing hyperparameters for selecting the optimal ones
@@ -1037,32 +1107,17 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
 
             # selecting the best model hyperparameters comparing the mean_val_error
             min_index = mean_val_error.index(min(mean_val_error))
-            optimal_hyperparams = storing_hyperparams[min_index]    
+            optimal_hyperparams = storing_hyperparams[min_index] 
+            optimal_model_params += [optimal_hyperparams]   
 
-            # now retrain the model using all the dataset (before initialize it)
-            layers_list = network_initialization(num_layers = optimal_hyperparams['layers'], 
-                                                 units_per_layer = optimal_hyperparams['units'],
-                                                 num_inputs = num_inputs,
-                                                 eta_0 = optimal_hyperparams['eta_0'],
-                                                 alpha = optimal_hyperparams['alpha'],
-                                                 lamb = optimal_hyperparams['lamb'],
-                                                 lamb0 = optimal_hyperparams['lamb0'],
-                                                 activation_output = activation_output,
-                                                 activation_hidden = activation_hidden)
+            # retrain the best model with optimal hyperparameters using test set as validatiion
+            layers_list, _ , test_error, _ , _ = train_test(optimal_hyperparams, num_inputs, seed,
+                                                            activation_output, activation_hidden,
+                                                            task, thr, stop_class, stop_param,
+                                                            tvs_array, data_test)
 
-            # retrain of the model
-            layers_list, epoch_error, accuracy = train(tvs_array, layers_list, num_inputs,
-                                                       optimal_hyperparams['minibatch_size'],
-                                                       task =  task, thr = thr)
-
-            # estimating the test error using the hold out test set
-            test_error = 0
-            for i in range(len(data_test[:, 0])):
-                test_error += (1 / len(data_test[:,0])) * \
-                        sum((feedforward_network(layers_list, data_test[i, :num_inputs]) 
-                            - data_test[i, num_inputs:])**2)
-
+            # update the best results so far
             trained_optimal_models += [layers_list]
             test_error_optimal_models += [test_error]
 
-    return trained_optimal_models, test_error_optimal_models
+    return trained_optimal_models, optimal_model_params, test_error_optimal_models

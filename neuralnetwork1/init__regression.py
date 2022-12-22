@@ -41,9 +41,12 @@ for i in range(len(tvs_array_load[:, 0])):
 tvs_array_load_minmax = np.column_stack((tvs_array_load_minmax, tvs_array_load[:, -2], tvs_array_load[:, -1]))
 # --------------------
 
-layers_list = performing_tvt(layers_range=[3], units_range=[10], num_inputs=9,
-                            num_targets=2, tvts_array=tvs_array_load_mv, k_range=[3], eta_0_range=[0.05],
-                            alpha_range=[0.], lamb_range=[0.], lamb0_range=[0.],
+results = performing_tvt(layers_range=[3], units_range=[10], num_inputs=9,
+                            num_targets=2, tvts_array=tvs_array_load_mv, k_range=[2,3], eta_0_range=[0.1],
+                            alpha_range=[0.4], lamb_range=[0.001], lamb0_range=[0.001],
                             configurations=4, minibatch_size_range=[100], activation_output=linear,
                             activation_hidden=sigmoid, stop_class='GL', stop_param=3,
                             task='regression', thr=0)
+
+for index in range(len(results[1])):
+    print(f'Set up: {results[1][index]}, test error: {results[2][index]}')
