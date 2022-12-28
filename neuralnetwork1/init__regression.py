@@ -49,4 +49,4 @@ results = performing_tvt(layers_range=[3], units_range=[10], num_inputs=9,
                             task='regression', thr=0)
 
 for index in range(len(results[1])):
-    print(f'Set up: {results[1][index]}, test error: {results[2][index]}')
+    print(f'Set up: {results[1][index]}, val error: {results[2][index]}, test error: {results[3][index]}')

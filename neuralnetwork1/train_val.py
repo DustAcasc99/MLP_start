@@ -490,10 +490,7 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
 
         if train_ == True:
             # coming back of 20 epochs and return True
-            epochs_error_train[-1:-20] = []
-            epochs_error_val[-1:-20] = []
             layers_model[-1:-20] = []
-
             return True, epochs_error_train, epochs_error_val, layers_model[-1]
 
         else:
@@ -521,8 +518,6 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
                     counter += 1
                     print(counter)
             if counter == strips:
-                epochs_error_train = epochs_error_train[:min_index+1]
-                epochs_error_val = epochs_error_val[:min_index+1]
                 layers_model =  layers_model[min_index]
                 return True, epochs_error_train, epochs_error_val, layers_model
             else:
@@ -544,8 +539,6 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
 
         # condition check
         if gen_loss > threshold:
-            epochs_error_train = epochs_error_train[:min_index+1]
-            epochs_error_val = epochs_error_val[:min_index+1]
             layers_model =  layers_model[min_index]
             return True, epochs_error_train, epochs_error_val, layers_model
         else:
@@ -573,8 +566,6 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
 
         # condition check
         if ratio > threshold:
-            epochs_error_train = epochs_error_train[:min_index+1]
-            epochs_error_val = epochs_error_val[:min_index+1]
             layers_model =  layers_model[min_index]
             return True, epochs_error_train, epochs_error_val, layers_model
         else:
@@ -962,14 +953,16 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
 
     # create an internal test set after a shuffle (hold out test)
     # taking 25% of original the dataset
-    data_test = tvts_array[int(0.75*len(tvts_array)):]
-    tvs_array = tvts_array[:int(0.75*len(tvts_array))]
+    data_test = tvts_array[int(0.90*len(tvts_array)):]
+    tvs_array = tvts_array[:int(0.90*len(tvts_array))]
 
     trained_optimal_models = [] # list to store the trained optimal model for each splitting
 
     test_error_optimal_models = [] # list to store test errors of optimal models
 
     optimal_model_params = [] # list to store optimal set of parameters used for test evaluation
+
+    val_error_optimal_models = [] # list to save (mean) validation error of optimal models
 
     # iterate 2 times for weights initializations changing the seed
     for seed in range(2):  
@@ -1106,7 +1099,8 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
                 storing_hyperparams += [hyper]
 
             # selecting the best model hyperparameters comparing the mean_val_error
-            min_index = mean_val_error.index(min(mean_val_error))
+            val_error = min(mean_val_error)
+            min_index = mean_val_error.index(val_error)
             optimal_hyperparams = storing_hyperparams[min_index] 
             optimal_model_params += [optimal_hyperparams]   
 
@@ -1118,6 +1112,7 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
 
             # update the best results so far
             trained_optimal_models += [layers_list]
+            val_error_optimal_models += [val_error]
             test_error_optimal_models += [test_error]
 
-    return trained_optimal_models, optimal_model_params, test_error_optimal_models
+    return trained_optimal_models, optimal_model_params, val_error_optimal_models, test_error_optimal_models
