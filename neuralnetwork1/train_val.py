@@ -52,6 +52,24 @@ def linear(net_ : float) -> float:
 
     return out_
 
+def ReLU(net: float) -> float:
+
+    out = net if net >= 0 else 0
+
+    return out
+
+def ELU(net: float) -> float:
+
+    out = net if net >= 0 else (np.exp(net) - 1)
+
+    return out
+
+def swish(net: float) -> float:
+
+    out = net * sigmoid(net)
+
+    return out
+
 def network_initialization(num_layers : int, units_per_layer : list, num_inputs : int, seed : int, 
                            eta_0 : float, alpha : float, lamb : float, lamb0 : float, 
                            activation_output : Callable[[float], float],
@@ -558,7 +576,7 @@ def stopping_criteria(epochs_error_train : list, epochs_error_val : list,
         # progress up to now
         min_train = min(epochs_error_train[-20:])
         sum_train = sum(epochs_error_train[-20:])
-        progress = 1000 * ((sum_train / 20 * min_train) - 1)
+        progress = 10 * ((sum_train / (20 * min_train)) - 1)
 
         # loss progress ratio
         ratio = gen_loss / progress
@@ -855,11 +873,14 @@ def train_test(hyperparams : dict, num_inputs : int, seed : int, activation_outp
     # plotting the learning curve for the current fold and the current hyperparameters set
     plt.plot(range(len(epochs_train_error)), epochs_train_error, marker = ".", color = 'blue')
     plt.plot(range(len(epochs_error_val)), epochs_error_val, marker = ".", color = 'green')
-    plt.title('Learning curve')
+    plt.title(f'Learning curves for model: {hyperparams}')
     plt.xlabel('Epochs')
     plt.ylabel('Error')
-    plt.legend(['Training Error', 'Test Error'])
+    plt.legend(['Training Error', 'Test Error'], prop={'size': 14})
     plt.show()
+    #plt.show(block=False)
+    #plt.pause(3)
+    #plt.close()
     
     if task == 'binary_classification':
         # plotting the learning curve accuracy for the current fold and the current hyperparameters set
@@ -870,6 +891,9 @@ def train_test(hyperparams : dict, num_inputs : int, seed : int, activation_outp
         plt.ylabel('Accuracy')
         plt.legend(['Training Accuracy', 'Test Accuracy'])
         plt.show()
+        #plt.show(block=False)
+        #plt.pause(3)
+        #plt.close()
         
     print(epochs_accuracy_val[-1], epochs_error_val[-1])
     
@@ -1075,11 +1099,14 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
                     # plotting the learning curve for the current fold and the current hyperparameters set
                     plt.plot(range(len(epochs_train_error)), epochs_train_error, marker = ".", color = 'blue')
                     plt.plot(range(len(epochs_val_error)), epochs_val_error, marker = ".", color = 'green')
-                    plt.title(f'Learning curve (fold {index_fold+1})')
+                    plt.title(f'Learning curve (fold {index_fold+1} of {k})')
                     plt.xlabel('Epochs')
                     plt.ylabel('Error')
                     plt.legend(['Training Error', 'Validation Error'])
                     plt.show()
+                    #plt.show(block=False)
+                    #plt.pause(3)
+                    #plt.close()
 
                     # update the validation errors found over the folds up to now
                     folds_val_error += [epochs_val_error[-1]]
