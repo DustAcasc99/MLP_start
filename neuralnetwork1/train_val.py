@@ -70,6 +70,32 @@ def swish(net: float) -> float:
 
     return out
 
+
+
+
+
+def compute_MEE(output_list : np.array , target_list : np.array, output_nums : int):
+    
+    tot_MEE = 0
+    
+    for output_pattern, target_pattern in zip(output_list, target_list):
+        
+        MEE_pattern = 0
+        
+        for i in range(output_nums):
+            MEE_pattern += (output_pattern[i] - target_pattern[i]) ** 2
+        
+        MEE_pattern = 1/len(output_list) * math.sqrt(MEE_pattern)
+        tot_MEE += MEE_pattern
+    
+    return tot_MEE                     
+                       
+                       
+                   
+    
+    
+    
+
 def network_initialization(num_layers : int, units_per_layer : list, num_inputs : int, seed : int, 
                            eta_0 : float, alpha : float, lamb : float, lamb0 : float, 
                            activation_output : Callable[[float], float],
@@ -661,153 +687,6 @@ def search_space_dict(num_targets : int, configurations : int,
 
     return grid_search_array, random_search_array
 
-
-def performing_tv(layers_range : np.ndarray, units_range : np.ndarray, num_inputs : int,
-                  num_targets : int, tvs_array : np.ndarray, k_range : np.ndarray, eta_0_range : np.ndarray,
-                  alpha_range : np.ndarray, lamb_range : np.ndarray, lamb0_range : np.ndarray,
-                  configurations : int, minibatch_size_range : int, activation_output : Callable[[float], float],
-                  activation_hidden : Callable[[float], float], stop_class : str, stop_param : float,
-                  task : str, thr : float) -> list:
-
-    """ Function for performing training and validation phases.
-    """
-    # defining/initializing the hyperparameter space where to search
-    grid_search_array, random_search_array = search_space_dict(num_targets, configurations, layers_range, units_range,
-                                     eta_0_range, alpha_range, lamb_range, lamb0_range, minibatch_size_range)
-
-    # iterate 10 times for weights initializations changing the seed
-    for seed in range(10):
-
-        # iterate on different k for splitting the Dataset
-        trained_optimal_model = [] # list to store the trained optimal model for each splitting
-
-        for index, k in enumerate(k_range):
-
-            # shuffling and splitting the original dataset
-            folds_data = split_tvs_kfCV(tvs_array, k)
-
-            # looping over every hyperparameter (in grid_search_array) and every fold 
-            for hyperparams in grid_search_array:
-
-                folds_error_val = [] # list to store the validation errors for every model obtained with
-                                     # every fold
-                mean_val_error = []  # list to store the mean of the empirical errors using the validation sets
-                                     # computed over the folds for every splitting cycle
-                storing_hyperparams = [] # list to store 
-
-                for index_fold in range(len(folds_data)):
-
-                    epochs_error_train = [] # list to store training errors that has to be empty every time we
-                                            # do it on a different fold
-                    epochs_error_val = []   # list to store validation errors
-                    layers_model = []       # list to store the model obtained at each epoch, used to implement
-                                            # early stopping
-
-                    print(f'Parameters {hyperparams}, fold {index_fold+1}\n:')
-
-                    # initializing the network (initialize the network every time we have a different fold
-                    # with the same seed -> in this way we have the same weights initializations in this loop)
-                    layers_list = network_initialization(num_layers = hyperparams['layers'], 
-                                                 units_per_layer = hyperparams['units'], num_inputs = num_inputs, seed = seed,
-                                                 eta_0 = hyperparams['eta_0'], alpha = hyperparams['alpha'],
-                                                 lamb = hyperparams['lamb'], lamb0 = hyperparams['lamb0'],
-                                                 activation_output = activation_output, activation_hidden = activation_hidden)
-
-                    # data array for the validation phase
-                    data_val = folds_data[index_fold]
-                    # data array for the training phase
-                    data_train_list = []
-                    for i in range(len(folds_data)):
-                        if i != index_fold:
-                            data_train_list += [folds_data[i]]
-                    data_train = data_train_list[0]
-                    for i in range(len(data_train_list)):
-                        if i != 0:
-                            data_train = np.append(data_train, data_train_list[i], axis = 0)
-
-                    # until stopping condition is verified perform the training and validation phases for new epochs
-                    condition = False
-                    counter = 0
-                    epochs = 20
-                    max_epochs = 1000
-
-                    while (condition != True and counter <= max_epochs):
-
-                        # update the counter
-                        counter += 1
-                        # shuffle training and validation sets for every epoch
-                        np.random.shuffle(data_train)
-                        np.random.shuffle(data_val)
-
-                        # perform the training phase and store the model and the epoch's error
-                        layers_list, epoch_error, accuracy = train(data_train, layers_list, num_inputs,
-                                                         minibatch_size = hyperparams['minibatch_size'],
-                                                         task = task, thr = thr)
-
-                        epochs_error_train += [epoch_error]
-                        layers_model += [layers_list]
-
-                        # estimating the empirical error using the validation set computed over the
-                        # current epoch and storing it
-                        epoch_error_val = 0
-                        for i in range(len(data_val[:, 0])):
-                            epoch_error_val += (1 / len(data_val[:,0])) * \
-                                sum((feedforward_network(layers_list, data_val[i, :num_inputs]) - data_val[i, num_inputs:])**2)
-
-                        epochs_error_val += [epoch_error_val]
-
-                        # printing out training and validation errors over the epochs
-                        print(f'training error {epochs_error_train[-1]}, validation error {epochs_error_val[-1]}')
-
-                        # see if the stopping condition is verified: if yes leaves the loop
-                        if counter >= epochs:
-                            condition, epochs_error_train, epochs_error_val, layers_model = stopping_criteria(
-                                                epochs_error_train, epochs_error_val, layers_model,
-                                                stop_class, stop_param)
-
-                    # plotting the learning curve for the current fold and the current hyperparameters set
-                    plt.plot(range(len(epochs_error_train)), epochs_error_train, marker = ".", color = 'blue')
-                    plt.plot(range(len(epochs_error_val)), epochs_error_val, marker = ".", linestyle='dashed', color = 'green')
-                    plt.title(f'Learning curve (fold {index_fold+1})')
-                    plt.xlabel('Epochs')
-                    plt.ylabel('Error')
-                    plt.legend(['Training Error', 'Validation Error'])
-                    plt.show()
-
-                    folds_error_val += [epochs_error_val[-1]]
-
-                # estimating the mean of the empirical errors using the validation sets computed over the folds
-                mean_val_error += [(1/k)*sum(folds_error_val)]
-
-                # storing hyperparameters for selecting the optimal ones
-                storing_hyperparams += [hyperparams]
-
-            # selecting the best model hyperparameters comparing the mean_val_error
-            min_index = mean_val_error.index(min(mean_val_error)) # index corresponding to the minimum value
-            optimal_hyperparams = storing_hyperparams[min_index]
-
-            # now retrain the model using all the dataset (before initialize it)
-            layers_list = network_initialization(num_layers = optimal_hyperparams['layers'], 
-                                                 units_per_layer = optimal_hyperparams['units'], num_inputs = num_inputs,
-                                                 eta_0 = optimal_hyperparams['eta_0'], alpha = optimal_hyperparams['alpha'],
-                                                 lamb = optimal_hyperparams['lamb'], lamb0 = optimal_hyperparams['lamb0'],
-                                                 activation_output = activation_output, activation_hidden = activation_hidden)
-            layers_list, epoch_error, accuracy = train(tvs_array, layers_list, num_inputs, optimal_hyperparams['minibatch_size'],
-                                             task =  task, thr = thr)
-
-            # storing the trained optimal model
-            trained_optimal_model += [layers_list]
-
-        # selecting the mean model
-        layers_list = (1 / len(k_range)) * sum(trained_optimal_model)
-        # storing the trained optimal model
-        trained_optimal_model += [layers_list]
-
-    # selecting the mean model
-    layers_list = (1 / len(k_range)) * sum(trained_optimal_model)
-
-
-    return layers_list # the trained model with optimal hyperparameters
 
 
 def train_test(hyperparams : dict, num_inputs : int, seed : int, activation_output : Callable[[float], float] , activation_hidden : Callable[[float], float], 
