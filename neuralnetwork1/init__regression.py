@@ -6,7 +6,7 @@
 import numpy as np
 
 # import files
-from train_val import performing_tv, performing_tvt, linear, sigmoid, ReLU, ELU, swish, train_test
+from train_val import performing_tvt, linear, sigmoid, ReLU, ELU, swish, train_test
 
 
 # loading training and validation data in a numpy array skipping the first 7 rows
@@ -90,6 +90,7 @@ hyperparams = {
 results = train_test(hyperparams=hyperparams, num_inputs=9, seed=1, activation_output=linear, 
                      activation_hidden=swish, task='regression', thr=0.5, stop_class='PQ', stop_param=8,
                      data_train=tvs_array_load_minmax[:int(0.9*len(tvs_array_load_minmax))],
-                     data_val=tvs_array_load_minmax[int(0.9*len(tvs_array_load_minmax)):])
+                     data_val=tvs_array_load_minmax[int(0.9*len(tvs_array_load_minmax)):], 
+                     scale_factor = (max_array[j] - min_array[j]), shift = min_array[j] )
 
 print(f'Set up: {hyperparams}, test error: {results[2]}, train error: {results[3]}')

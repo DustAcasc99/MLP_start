@@ -289,7 +289,7 @@ def reset_mini_batch(layers_list):
 
 
 def train(data_train : np.ndarray, layers_list : list, num_inputs : int, 
-          minibatch_size : int, task : str, thr : float) -> Tuple[list, float]:
+          minibatch_size : int, task : str, thr : float, scale_factor = 1.0, shift = 0.0) -> Tuple[list, float]:
 
     """ Function to train the network over a single epoch.
 
@@ -335,20 +335,28 @@ def train(data_train : np.ndarray, layers_list : list, num_inputs : int,
         # inputs to be passed
         to_pass = data_train[index, :num_inputs]
         # computing the feedforward propagation for every layer in the network
-        output_ = feedforward_network(layers_list, to_pass)
+        output_ = (feedforward_network(layers_list, to_pass) * scale_factor) + shift
         # computing the backpropagation for every layer in the network
         
-        target_ = data_train[index, num_inputs:]
+        target_ =  (data_train[index, num_inputs:] * scale_factor) + shift
+        
         
         pattern_error, acc_increase = backprop_network(layers_list, data_train[index, num_inputs:], minibatch_size,
                                                         task = task, thr = thr)
         
-        MEE_pattern_error = math.sqrt((( output_[0] - target_[0] ) ** 2 + ( output_[1] - target_[1] ) ** 2 ))
+        if task == 'regression':
+        
+            
+            
+            MEE_pattern_error = math.sqrt((( output_[0] - target_[0] ) ** 2 + ( output_[1] - target_[1] ) ** 2 ))
+           
+            
+            epoch_MEE += MEE_pattern_error 
         
 
         # computing the training error over an epoch
         epoch_error += pattern_error
-        epoch_MEE += MEE_pattern_error
+        
 
         if task == 'binary_classification':
             accuracy += acc_increase
@@ -690,7 +698,7 @@ def search_space_dict(num_targets : int, configurations : int,
 
 
 def train_test(hyperparams : dict, num_inputs : int, seed : int, activation_output : Callable[[float], float] , activation_hidden : Callable[[float], float], 
-               task : str, thr : 0.5, stop_class : str , stop_param : int , data_train : np.ndarray, data_val : np.ndarray):
+               task : str, thr : 0.5, stop_class : str , stop_param : int , data_train : np.ndarray, data_val : np.ndarray, scale_factor = 1.0, shift = 0.0):
     
     layers_list = network_initialization(num_layers = hyperparams['layers'], 
                                          units_per_layer = hyperparams['units'],
@@ -717,7 +725,7 @@ def train_test(hyperparams : dict, num_inputs : int, seed : int, activation_outp
     condition = False
     counter = 0
     epochs = 50
-    max_epochs = 1000
+    max_epochs = 500
     
     while (condition != True and counter <= max_epochs):
 
@@ -747,11 +755,16 @@ def train_test(hyperparams : dict, num_inputs : int, seed : int, activation_outp
         epoch_MEE_val = 0
         
         for i in range(len(data_val[:, 0])):
-            output_ = feedforward_network(layers_list, data_val[i, :num_inputs])
-            target_ = data_val[i, num_inputs:]
+            output_ = (feedforward_network(layers_list, data_val[i, :num_inputs]) * scale_factor) + shift
+            target_ = (data_val[i, num_inputs:] * scale_factor) + shift
             
-            epoch_MEE_val += (1 / len(data_val[:,0])) * math.sqrt((( output_[0] - target_[0] ) ** 2 + ( output_[1] - target_[1] ) ** 2 ))
             
+            
+            if task == 'regression':
+            
+                epoch_MEE_val += (1 / len(data_val[:,0])) * math.sqrt((( output_[0] - target_[0] ) ** 2 + ( output_[1] - target_[1] ) ** 2 ))
+            
+                
                        
             epoch_error_val += (1 / len(data_val[:,0])) * \
                 sum((feedforward_network(layers_list, data_val[i, :num_inputs]) - data_val[i, num_inputs:])**2)
@@ -773,6 +786,7 @@ def train_test(hyperparams : dict, num_inputs : int, seed : int, activation_outp
                                 model_layers, stop_class, stop_param)
             
     # plotting the learning curve for the current fold and the current hyperparameters set
+    plt.figure(figsize=(10, 8))
     plt.plot(range(len(epochs_train_error)), epochs_train_error, marker = ".", color = 'blue')
     plt.plot(range(len(epochs_error_val)), epochs_error_val, marker = ".", linestyle='dashed' , color = 'green')
     plt.title(f'Learning curves for model: {hyperparams}')
@@ -786,6 +800,7 @@ def train_test(hyperparams : dict, num_inputs : int, seed : int, activation_outp
     
     if task == 'binary_classification':
         # plotting the learning curve accuracy for the current fold and the current hyperparameters set
+        
         plt.plot(range(len(epochs_train_accuracy)), epochs_train_accuracy, marker = ".", color = 'blue')
         plt.plot(range(len(epochs_accuracy_val)), epochs_accuracy_val, marker = ".", linestyle='dashed', color = 'green')
         plt.title('Learning curve - Accuracy')
@@ -808,7 +823,7 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
                   alpha_range : np.ndarray, lamb_range : np.ndarray, lamb0_range : np.ndarray,
                   configurations : int, minibatch_size_range : int, activation_output : Callable[[float], float],
                   activation_hidden : Callable[[float], float], stop_class : str, stop_param : float,
-                  task : str, thr : float) -> list:
+                  task : str, thr : float, scale_factor = 1.0, shift = 0.0) -> list:
     """ Function to perform a train-validation-test session using a data set divided in a training-validation
     set and a data set. The first part of original data are used to perform a k-fold corss validation, while
     the second slice is used as an external hold-out test set. In the function algorithm the process is
@@ -978,7 +993,7 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
                     condition = False
                     counter = 0
                     epochs = 20
-                    max_epochs = 500
+                    max_epochs = 1000
 
                     while (condition != True and counter <= max_epochs):
 
@@ -991,7 +1006,7 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
                         # perform the training phase and store the model and the epoch's error
                         layers_list, epoch_error, epoch_MEE, accuracy = train(data_train, layers_list, num_inputs,
                                                          minibatch_size = hyperparams['minibatch_size'],
-                                                         task = task, thr = thr)
+                                                         task = task, thr = thr, scale_factor = scale_factor, shift = shift)
 
                         # Update the memory of past training error and layers states
                         epochs_train_error += [epoch_error]
@@ -1009,17 +1024,21 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
                         
                         
                         for i in range(len(data_val[:, 0])):                            
-                            output_ = feedforward_network(layers_list, data_val[i, :num_inputs])
-                            target_ = data_val[i, num_inputs:]                            
+                            output_ = (feedforward_network(layers_list, data_val[i, :num_inputs]) * scale_factor ) + shift
+                            target_ = (data_val[i, num_inputs:] * scale_factor) + shift                    
                             
                             epoch_val_error += (1 / len(data_val[:,0])) * \
                                 sum((feedforward_network(layers_list, data_val[i, :num_inputs]) 
                                     - data_val[i, num_inputs:])**2)
+                                
+                            if task == 'regression':
                             
-                            epoch_val_MEE += (1 / len(data_val[:,0])) * \
-                                math.sqrt((( output_[0] - target_[0] ) ** 2 + ( output_[1] - target_[1] ) ** 2 ))
-                            
-                            
+                                epoch_val_MEE += (1 / len(data_val[:,0])) * \
+                                    math.sqrt((( output_[0] - target_[0] ) ** 2 + ( output_[1] - target_[1] ) ** 2 ))
+                                    
+                                epoch_val_MEE = epoch_val_MEE * scale_factor
+                                
+                                
                             
 
                         # store the validation error
@@ -1036,6 +1055,7 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
                                                 model_layers, stop_class, stop_param)
 
                     # plotting the learning curve for the current fold and the current hyperparameters set
+                    plt.figure(figsize=(10, 8))
                     plt.plot(range(len(epochs_train_error)), epochs_train_error, marker = ".", color = 'blue')
                     plt.plot(range(len(epochs_val_error)), epochs_val_error, marker = ".", linestyle='dashed', color = 'green')
                     plt.title(f'Learning curve (fold {index_fold+1} of {k})')
@@ -1082,7 +1102,7 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
             layers_list, _ , test_error, _ , _ , train_MEE, test_MEE = train_test(optimal_hyperparams, num_inputs, seed,
                                                             activation_output, activation_hidden,
                                                             task, thr, stop_class, stop_param,
-                                                            tvs_array, data_test)
+                                                            tvs_array, data_test, scale_factor = scale_factor, shift = shift )
 
             # update the best results so far
             trained_optimal_models += [layers_list]
