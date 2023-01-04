@@ -1036,7 +1036,7 @@ def performing_tvt(layers_range : np.ndarray, units_range : np.ndarray, num_inpu
                                 epoch_val_MEE += (1 / len(data_val[:,0])) * \
                                     math.sqrt((( output_[0] - target_[0] ) ** 2 + ( output_[1] - target_[1] ) ** 2 ))
                                     
-                                epoch_val_MEE = epoch_val_MEE * scale_factor
+                                epoch_val_MEE = epoch_val_MEE 
                                 
                                 
                             
